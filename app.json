@@ -4,16 +4,30 @@
     "slug": "marbles-game",
     "version": "1.0.0",
     "sdkVersion": "48.0.0",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "updates": {"fallbackToCacheTimeout": 0},
-    "assetBundlePatterns": ["**/*"],
-    "ios": {"supportsTablet": true}
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mike008.marblesgame"
+    },
+    "android": {
+      "package": "com.mike008.marblesgame"
+    }
   }
 }
