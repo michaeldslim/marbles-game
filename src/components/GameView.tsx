@@ -3,7 +3,7 @@ import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TextInput, Tou
 import Slider from '@react-native-community/slider';
 import Svg, { Circle, Line, Rect, Ellipse, Polyline } from 'react-native-svg';
 import { PhysicsEngine, createTrianglePile, Marble } from '../game/physics';
-import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_FRICTION, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TELEPORT_DELAY_MS } from '../game/constants';
+import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, PLAYER_MARBLE_FRICTION, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TELEPORT_DELAY_MS } from '../game/constants';
 
 const FPS = 60;
 
@@ -38,8 +38,9 @@ export default function GameView(): JSX.Element {
       const eng = engineRef.current;
       if (eng) {
         eng.step(dt);
-        // detect moving marbles to know when a turn has settled (use threshold)
-        const moving = eng.marbles.filter((m) => !m.captured && Math.hypot(m.vel.x, m.vel.y) > SETTLE_SPEED_THRESHOLD).length;
+        // settle when the player marble specifically has stopped moving
+        const playerMarble = eng.marbles.find((m) => m.color === '#f44');
+        const playerMoving = playerMarble && Math.hypot(playerMarble.vel.x, playerMarble.vel.y) > SETTLE_SPEED_THRESHOLD;
         // remove marbles that leave the circular boundary and award points to last shooter
         const centerX = boundaryCenterRef.current ? boundaryCenterRef.current.x : eng.width / 2;
         const centerY = boundaryCenterRef.current ? boundaryCenterRef.current.y : eng.height / 2;
@@ -62,9 +63,19 @@ export default function GameView(): JSX.Element {
             }
           }
         }
+        // auto-restart if all pile marbles are gone (only after game has started)
+        if (startedRef.current) {
+          const pileMarbles = eng.marbles.filter((m) => m.color !== '#f44');
+          if (pileMarbles.length === 0) {
+            startedRef.current = false;
+            shotActiveRef.current = false;
+            settledCounterRef.current = 0;
+            setTimeout(() => restart(), 800);
+          }
+        }
         // teleport player back when all marbles settle (only after a shot)
         if (shotActiveRef.current) {
-          if (moving === 0) settledCounterRef.current++; else settledCounterRef.current = 0;
+          if (!playerMoving) settledCounterRef.current++; else settledCounterRef.current = 0;
           if (settledCounterRef.current === SETTLE_FRAMES) {
             settledCounterRef.current = 0;
             shotActiveRef.current = false;
@@ -113,7 +124,6 @@ export default function GameView(): JSX.Element {
     // create engine once when we have a layout and engine not yet created
     if (!engineRef.current) {
       const eng = new PhysicsEngine(newW, newH - 200);
-      eng.friction = ENGINE_DEFAULT_FRICTION;
       eng.restitution = restitution;
       // place pile higher on the board so play area moves up (relative to engine height)
       const engHeight = eng.height;
@@ -145,7 +155,7 @@ export default function GameView(): JSX.Element {
       boundaryRadiusRef.current = Math.min(maxDist + 12, maxAllowed);
       boundaryCenterRef.current = { x: cx, y: cy };
       const playerY = eng.height - 60;
-      const player = eng.addMarble({ pos: { x: newW / 2, y: playerY }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44' });
+      const player = eng.addMarble({ pos: { x: newW / 2, y: playerY }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44', friction: PLAYER_MARBLE_FRICTION });
       playerIdRef.current = player.id;
       // reset scores and mark game as not started briefly to avoid scoring during setup
       setScore(0);
@@ -196,7 +206,7 @@ export default function GameView(): JSX.Element {
         if (!player && playerIdRef.current != null) player = eng.marbles.find((m) => m.id === playerIdRef.current) || null;
         if (player) playerIdRef.current = player.id;
         if (!player) {
-          const newPlayer = eng.addMarble({ pos: { x: eng.width / 2, y: eng.height - 60 }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44' });
+          const newPlayer = eng.addMarble({ pos: { x: eng.width / 2, y: eng.height - 60 }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44', friction: PLAYER_MARBLE_FRICTION });
           playerIdRef.current = newPlayer.id;
           player = newPlayer;
         }
@@ -302,7 +312,6 @@ export default function GameView(): JSX.Element {
     shotActiveRef.current = false;
     setScore(0);
     const eng = new PhysicsEngine(w, h - 200);
-    eng.friction = ENGINE_DEFAULT_FRICTION;
     eng.restitution = restitution;
     const pileCenterY = eng.height * 0.28 + 40;
     createTrianglePile(eng, w / 2, pileCenterY, 5);
@@ -313,7 +322,7 @@ export default function GameView(): JSX.Element {
     for (const m of eng.marbles) { const d = Math.hypot(m.pos.x - cx, m.pos.y - cy) + m.radius; if (d > maxDist) maxDist = d; }
     boundaryRadiusRef.current = Math.min(maxDist + 12, Math.min(w, eng.height) * 0.4);
     boundaryCenterRef.current = { x: cx, y: cy };
-    const player = eng.addMarble({ pos: { x: w / 2, y: eng.height - 60 }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44' });
+    const player = eng.addMarble({ pos: { x: w / 2, y: eng.height - 60 }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44', friction: PLAYER_MARBLE_FRICTION });
     playerIdRef.current = player.id;
     engineRef.current = eng;
     setTimeout(() => (startedRef.current = true), 500);

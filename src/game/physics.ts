@@ -1,6 +1,6 @@
 export type Vec = { x: number; y: number };
 
-import { ENGINE_DEFAULT_FRICTION, ENGINE_DEFAULT_RESTITUTION, PILE_MARBLE_RADIUS, PILE_MARBLE_FRICTION } from './constants';
+import { ENGINE_DEFAULT_RESTITUTION, PILE_MARBLE_RADIUS, PILE_MARBLE_FRICTION } from './constants';
 
 export interface Marble {
   id: number;
@@ -19,7 +19,7 @@ export class PhysicsEngine {
   height: number;
   marbles: Marble[] = [];
   nextId = 1;
-  friction = ENGINE_DEFAULT_FRICTION;
+  friction = 0.998;
   // coefficient of restitution (bounciness) 0..1
   restitution = ENGINE_DEFAULT_RESTITUTION;
 
@@ -108,7 +108,7 @@ export class PhysicsEngine {
           const vb_t = b.vel.x * tx + b.vel.y * ty;
           // use coefficient of restitution for normal component (equal mass)
           const rel = va_n - vb_n;
-          const J = -(1 + e) * rel / 2; // impulse scalar for equal masses
+          const J = -(1 + e) * rel / 2;
           const va_n_after = va_n + J;
           const vb_n_after = vb_n - J;
           // convert back to velocity vectors
@@ -116,17 +116,6 @@ export class PhysicsEngine {
           a.vel.y = va_n_after * ny + va_t * ty;
           b.vel.x = vb_n_after * nx + vb_t * tx;
           b.vel.y = vb_n_after * ny + vb_t * ty;
-          // stop player marble on collision with pile marbles
-          if (a.color === '#f44') {
-            a.vel.x = 0;
-            a.vel.y = 0;
-            a.stopped = true;
-          }
-          if (b.color === '#f44') {
-            b.vel.x = 0;
-            b.vel.y = 0;
-            b.stopped = true;
-          }
         }
       }
     }
