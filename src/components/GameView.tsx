@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import Slider from '@react-native-community/slider';
 import Svg, { Circle, Line, Rect, Ellipse, Polyline } from 'react-native-svg';
 import { PhysicsEngine, createTrianglePile, Marble } from '../game/physics';
-import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_FRICTION, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, AI_MARBLE_RADIUS, AI_BASE_SPEED, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TURN_MAX_WAIT_MS } from '../game/constants';
+import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_FRICTION, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TELEPORT_DELAY_MS } from '../game/constants';
 
 const FPS = 60;
 
@@ -11,27 +12,20 @@ export default function GameView(): JSX.Element {
   const [marbles, setMarbles] = useState<Marble[]>([]);
   const [score, setScore] = useState<number>(0);
   const [lives, setLives] = useState<number>(3);
-  const [aiScore, setAiScore] = useState<number>(0);
-  const [lastLaunch, setLastLaunch] = useState<{ px: number; py: number; ex: number; ey: number; vx: number; vy: number; id: number | null } | null>(null);
-  const lastShooterRef = useRef<'player' | 'ai' | null>(null);
-  const turnRef = useRef<'human' | 'ai' | 'idle'>('idle');
-  const roundStarterRef = useRef<'human' | 'ai'>('human');
-  const turnActiveRef = useRef<boolean>(false);
-  const aiSnapshotRef = useRef<Set<number> | null>(null);
   const startedRef = useRef<boolean>(false);
-  const [friction, setFriction] = useState<number>(ENGINE_DEFAULT_FRICTION);
   const [restitution, setRestitution] = useState<number>(ENGINE_DEFAULT_RESTITUTION);
   const [power, setPower] = useState<number>(DEFAULT_PLAYER_POWER);
+  // refs so PanResponder/tick closures (created once) always read the live value
+  const powerRef = useRef<number>(DEFAULT_PLAYER_POWER);
+  const restitutionRef = useRef<number>(ENGINE_DEFAULT_RESTITUTION);
   const engineRef = useRef<PhysicsEngine | null>(null);
   const playerIdRef = useRef<number | null>(null);
   const aimingRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
   const boundaryRadiusRef = useRef<number | null>(null);
   const boundaryCenterRef = useRef<{ x: number; y: number } | null>(null);
   const settledCounterRef = useRef<number>(0);
-  const turnStartTimeRef = useRef<number | null>(null);
-  const [winner, setWinner] = useState<'ai' | 'human' | null>(null);
 
-  // start animation loop once; engine is created on first layout
+  // main tick loop: run the physics step and rendering updates
   useEffect(() => {
     let last = Date.now();
     let rafId: number | null = null;
@@ -58,71 +52,29 @@ export default function GameView(): JSX.Element {
             if (m.color === '#f44') continue;
             // remove from engine
             eng.marbles.splice(i, 1);
-            // award points to active turn's player, but ignore during initial setup
+            // award points to player, ignore during initial setup
             if (startedRef.current) {
-              if (turnRef.current === 'human') {
-                setScore((s) => s + 1);
-              } else if (turnRef.current === 'ai') {
-                setAiScore((s) => s + 1);
-              }
+              setScore((s) => s + 1);
             }
           }
         }
-        // if a turn is active, require several consecutive settled frames to avoid transient misses
-        if (turnActiveRef.current) {
-          // also allow a maximum wait so AI doesn't stall when friction is very low
-          const nowMs = Date.now();
-          const turnStart = turnStartTimeRef.current ?? 0;
-          const maxWait = TURN_MAX_WAIT_MS; // ms
-          if (moving === 0) settledCounterRef.current++; else settledCounterRef.current = 0;
-          if (settledCounterRef.current >= SETTLE_FRAMES || (turnStart && nowMs - turnStart > maxWait)) {
-            settledCounterRef.current = 0;
-            console.log('tick: settled, turn=', turnRef.current, 'moving=', moving);
-            if (turnRef.current === 'human') {
-            // human turn finished -> move red marble to start and begin AI turn
-              const player = eng.marbles.find((m) => m.color === '#f44');
+        // teleport player back when all marbles settle
+        if (moving === 0) settledCounterRef.current++; else settledCounterRef.current = 0;
+        if (settledCounterRef.current === SETTLE_FRAMES && startedRef.current) {
+          settledCounterRef.current = 0;
+          const eng2 = eng;
+          setTimeout(() => {
+            const player = eng2.marbles.find((m) => m.color === '#f44');
             if (player) {
-              player.pos.x = eng.width / 2;
-              player.pos.y = eng.height - 80;
+              player.pos.x = eng2.width / 2;
+              player.pos.y = eng2.height - 80;
               player.vel.x = 0;
               player.vel.y = 0;
+              player.stopped = false;
             }
-            // prepare snapshot of marbles inside boundary for AI win check
-            const insideIds = new Set<number>();
-            for (const m of eng.marbles) {
-              const dx = m.pos.x - centerX;
-              const dy = m.pos.y - centerY;
-              if (Math.hypot(dx, dy) <= boundaryRadius && m.color !== '#48f') insideIds.add(m.id);
-            }
-            aiSnapshotRef.current = insideIds;
-            console.log('transition: human->ai, snapshot size=', insideIds.size);
-            // start AI turn and shoot immediately (avoid setTimeout stalls)
-            turnRef.current = 'ai';
-            turnActiveRef.current = true;
-            turnStartTimeRef.current = Date.now();
-            console.log('transition: human->ai - starting aiShoot immediately');
-            aiShoot();
-            } else if (turnRef.current === 'ai') {
-              // AI turn finished -> next round starter becomes AI
-              roundStarterRef.current = 'ai';
-              turnRef.current = 'idle';
-              turnActiveRef.current = false;
-              aiSnapshotRef.current = null;
-            }
-          }
+          }, TELEPORT_DELAY_MS);
         }
         setMarbles([...eng.marbles]);
-        // AI win: if AI turn and snapshot existed but none of those ids remain inside
-        if (turnRef.current === 'ai' && aiSnapshotRef.current) {
-          const anyLeft = [...aiSnapshotRef.current].some((id) => eng.marbles.some((m) => m.id === id));
-          if (!anyLeft && aiSnapshotRef.current.size > 0) {
-            console.log('AI win detected: none left from snapshot');
-            setWinner('ai');
-            turnRef.current = 'idle';
-            turnActiveRef.current = false;
-            aiSnapshotRef.current = null;
-          }
-        }
       }
       rafId = requestAnimationFrame(tick);
     };
@@ -132,13 +84,17 @@ export default function GameView(): JSX.Element {
     };
   }, []);
 
-  // apply parameter updates immediately when changed
+  // apply parameter updates immediately when changed; also keep refs in sync
   useEffect(() => {
+    restitutionRef.current = restitution;
     const eng = engineRef.current;
     if (!eng) return;
-    eng.friction = friction;
     eng.restitution = restitution;
-  }, [friction, restitution]);
+  }, [restitution]);
+
+  useEffect(() => {
+    powerRef.current = power;
+  }, [power]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -147,8 +103,8 @@ export default function GameView(): JSX.Element {
     setSize({ w: newW, h: newH });
     // create engine once when we have a layout and engine not yet created
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(newW, newH - 120);
-      eng.friction = friction;
+      const eng = new PhysicsEngine(newW, newH - 200);
+      eng.friction = ENGINE_DEFAULT_FRICTION;
       eng.restitution = restitution;
       // place pile higher on the board so play area moves up (relative to engine height)
       const engHeight = eng.height;
@@ -184,7 +140,6 @@ export default function GameView(): JSX.Element {
       playerIdRef.current = player.id;
       // reset scores and mark game as not started briefly to avoid scoring during setup
       setScore(0);
-      setAiScore(0);
       startedRef.current = false;
       setTimeout(() => (startedRef.current = true), 500);
       engineRef.current = eng;
@@ -195,7 +150,7 @@ export default function GameView(): JSX.Element {
     const engRef = engineRef.current;
     if (engRef) {
       engRef.width = newW;
-      engRef.height = newH - 120;
+      engRef.height = newH - 200;
     }
   };
 
@@ -243,20 +198,9 @@ export default function GameView(): JSX.Element {
         const mag = Math.hypot(dx, dy) || 1;
         const dirx = dx / mag;
         const diry = dy / mag;
-        const vel = { x: dirx * PLAYER_LAUNCH_SPEED * power, y: diry * PLAYER_LAUNCH_SPEED * power };
-        lastShooterRef.current = 'player';
-        turnRef.current = 'human';
-        turnStartTimeRef.current = Date.now();
-        turnActiveRef.current = true;
-        // debug: record and log computed launch
-        console.log('launch', { playerId: playerIdRef.current, px, py, ex, ey, vel });
-        setLastLaunch({ px: Math.round(px), py: Math.round(py), ex: Math.round(ex), ey: Math.round(ey), vx: Math.round(vel.x), vy: Math.round(vel.y), id: player ? player.id : playerIdRef.current });
+        const vel = { x: dirx * PLAYER_LAUNCH_SPEED * powerRef.current, y: diry * PLAYER_LAUNCH_SPEED * powerRef.current };
         eng.launchMarble(playerIdRef.current, vel);
-        // verify marble in engine received velocity
-        const launched = eng.marbles.find((mm) => mm.id === playerIdRef.current);
-        console.log('post-launch marble', launched ? { id: launched.id, vel: launched.vel, pos: launched.pos } : 'not found');
         aimingRef.current = null;
-        // AI turn will start automatically when the human turn settles
       },
     })
   ).current;
@@ -287,7 +231,7 @@ export default function GameView(): JSX.Element {
     const mag = Math.hypot(dx, dy) || 1;
     const dirx = dx / mag;
     const diry = dy / mag;
-    const initialVel = { x: dirx * LAUNCH_SPEED * power, y: diry * LAUNCH_SPEED * power };
+    const initialVel = { x: dirx * LAUNCH_SPEED * powerRef.current, y: diry * LAUNCH_SPEED * powerRef.current };
 
     // simple forward simulation (no collisions with other marbles)
     const pts: number[] = [];
@@ -338,88 +282,80 @@ export default function GameView(): JSX.Element {
     return <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#000" strokeWidth={2} strokeOpacity={0.5} />;
   };
 
-  // simple AI shooter: spawn an AI marble at bottom center and shoot toward center with randomized angle
-  const aiShoot = () => {
-    const eng = engineRef.current;
-    if (!eng) return;
-    console.log('aiShoot: starting');
-    const aiStart = { x: eng.width / 2, y: eng.height - 80 };
-    const ai = eng.addMarble({ pos: { ...aiStart }, vel: { x: 0, y: 0 }, radius: AI_MARBLE_RADIUS, color: '#48f' });
-    // aim roughly toward center with small random offset
-    const center = { x: eng.width / 2, y: eng.height / 2 };
-    const dx = center.x - aiStart.x + (Math.random() - 0.5) * 80;
-    const dy = center.y - aiStart.y + (Math.random() - 0.5) * 80;
-    const mag = Math.hypot(dx, dy) || 1;
-    const dirx = dx / mag;
-    const diry = dy / mag;
-    const vel = { x: dirx * AI_BASE_SPEED * DEFAULT_PLAYER_POWER, y: diry * AI_BASE_SPEED * DEFAULT_PLAYER_POWER };
-    lastShooterRef.current = 'ai';
-    eng.launchMarble(ai.id, vel);
-    // debug
-    const la = eng.marbles.find((mm) => mm.id === ai.id);
-    console.log('ai launch', la ? { id: la.id, vel: la.vel, pos: la.pos } : 'not found');
-    // AI turn remains active; tick will detect when it settles and transition
+  const restart = () => {
+    const w = size.w;
+    const h = size.h;
+    boundaryRadiusRef.current = null;
+    boundaryCenterRef.current = null;
+    settledCounterRef.current = 0;
+    startedRef.current = false;
+    setScore(0);
+    const eng = new PhysicsEngine(w, h - 200);
+    eng.friction = ENGINE_DEFAULT_FRICTION;
+    eng.restitution = restitution;
+    const pileCenterY = eng.height * 0.28;
+    createTrianglePile(eng, w / 2, pileCenterY, 5);
+    let cx = 0, cy = 0, count = 0;
+    for (const m of eng.marbles) { cx += m.pos.x; cy += m.pos.y; count++; }
+    if (count > 0) { cx /= count; cy /= count; } else { cx = w / 2; cy = pileCenterY; }
+    let maxDist = 0;
+    for (const m of eng.marbles) { const d = Math.hypot(m.pos.x - cx, m.pos.y - cy) + m.radius; if (d > maxDist) maxDist = d; }
+    boundaryRadiusRef.current = Math.min(maxDist + 12, Math.min(w, eng.height) * 0.4);
+    boundaryCenterRef.current = { x: cx, y: cy };
+    const player = eng.addMarble({ pos: { x: w / 2, y: eng.height - 120 }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44' });
+    playerIdRef.current = player.id;
+    engineRef.current = eng;
+    setTimeout(() => (startedRef.current = true), 500);
+    setMarbles([...eng.marbles]);
   };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
       <View style={styles.hudRow}>
-        <Text style={styles.hud}>Tap-drag to aim and release to shoot</Text>
+        <TouchableOpacity style={styles.restartBtn} onPress={restart}>
+          <Text style={styles.restartText}>Restart</Text>
+        </TouchableOpacity>
         <View style={styles.scoreBox}>
-          <Text style={styles.score}>Player: {score}</Text>
-          <Text style={styles.score}>AI: {aiScore}</Text>
+          <Text style={styles.score}>Score: {score}</Text>
           <Text style={styles.score}>Lives: {lives}</Text>
-          <Text style={styles.score}>Turn: {turnRef.current}</Text>
-          <Text style={styles.score}>Starter: {roundStarterRef.current}</Text>
-          {winner ? <Text style={[styles.score, { fontWeight: '700' }]}>Winner: {winner}</Text> : null}
-          {
-            (() => {
-              const eng = engineRef.current;
-              if (!eng) return null;
-              const p = eng.marbles.find((m) => m.id === playerIdRef.current) || eng.marbles.find((m) => m.color === '#f44');
-              if (!p) return null;
-              return <Text style={styles.score}>P@{Math.round(p.pos.x)},{Math.round(p.pos.y)}</Text>;
-            })()
-          }
-          {lastLaunch ? (
-            <Text style={styles.score}>L:{lastLaunch.vx},{lastLaunch.vy}</Text>
-          ) : null}
         </View>
       </View>
       <View style={styles.controls}>
-        <View style={styles.controlItem}>
-          <Text>Friction</Text>
-          <View style={styles.ctrlRow}>
-            <TouchableOpacity onPress={() => setFriction((v) => Math.max(0, +(v - 0.001).toFixed(3)))} style={styles.btn}><Text>-</Text></TouchableOpacity>
-            <TextInput style={styles.input} value={String(friction)} onChangeText={(t) => setFriction(Math.min(1, Math.max(0, parseFloat(t) || 0)))} keyboardType="numeric" />
-            <TouchableOpacity onPress={() => setFriction((v) => Math.min(1, +(v + 0.001).toFixed(3)))} style={styles.btn}><Text>+</Text></TouchableOpacity>
+          <View style={styles.controlItem}>
+            <Text>Restitution</Text>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={1}
+              step={0.01}
+              value={restitution}
+              minimumTrackTintColor="#2a9df4"
+              maximumTrackTintColor="#ddd"
+              onValueChange={(v: number) => setRestitution(parseFloat(v.toFixed(2)))}
+            />
+          </View>
+          <View style={styles.controlItem}>
+            <Text>Power</Text>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={10}
+              step={0.1}
+              value={power}
+              minimumTrackTintColor="#2a9df4"
+              maximumTrackTintColor="#ddd"
+              onValueChange={(v: number) => setPower(parseFloat(v.toFixed(1)))}
+            />
           </View>
         </View>
-        <View style={styles.controlItem}>
-          <Text>Restitution</Text>
-          <View style={styles.ctrlRow}>
-            <TouchableOpacity onPress={() => setRestitution((v) => Math.max(0, +(v - 0.05).toFixed(2)))} style={styles.btn}><Text>-</Text></TouchableOpacity>
-            <TextInput style={styles.input} value={String(restitution)} onChangeText={(t) => setRestitution(Math.min(1, Math.max(0, parseFloat(t) || 0)))} keyboardType="numeric" />
-            <TouchableOpacity onPress={() => setRestitution((v) => Math.min(1, +(v + 0.05).toFixed(2)))} style={styles.btn}><Text>+</Text></TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.controlItem}>
-          <Text>Power</Text>
-          <View style={styles.ctrlRow}>
-            <TouchableOpacity onPress={() => setPower((v) => Math.max(0, +(v - 0.1).toFixed(1)))} style={styles.btn}><Text>-</Text></TouchableOpacity>
-            <TextInput style={styles.input} value={String(power)} onChangeText={(t) => setPower(parseFloat(t) || 0)} keyboardType="numeric" />
-            <TouchableOpacity onPress={() => setPower((v) => +(v + 0.1).toFixed(1))} style={styles.btn}><Text>+</Text></TouchableOpacity>
-          </View>
-        </View>
-      </View>
       <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <Svg width={size.w} height={size.h - 120}>
-          <Rect x={0} y={0} width={size.w} height={size.h - 120} fill="#fff6e6" />
+        <Svg width={size.w} height={size.h - 200}>
+          <Rect x={0} y={0} width={size.w} height={size.h - 200} fill="#fff6e6" />
             {/* visible play boundary (circle) */}
             {
               (() => {
                 const bw = size.w;
-                const bh = size.h - 120;
+                const bh = size.h - 200;
                 const cx = boundaryCenterRef.current ? boundaryCenterRef.current.x : bw / 2;
                 const cy = boundaryCenterRef.current ? boundaryCenterRef.current.y : bh / 2;
                 const r = boundaryRadiusRef.current != null ? boundaryRadiusRef.current : Math.min(bw, bh) * 0.32;
@@ -435,16 +371,21 @@ export default function GameView(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', paddingTop: 20 },
+  container: { flex: 1, alignItems: 'center', paddingTop: 2 },
   hud: { marginBottom: 8, fontSize: 14 },
   arenaWrap: { width: '100%', alignItems: 'center' },
-  controlItem: { marginBottom: 0, width: '32%' },
-  controls: { width: '95%', padding: 6, marginBottom: 8, backgroundColor: '#fff', borderRadius: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', height: 92 },
+  controlItem: { width: '100%', marginBottom: 6 },
+  controls: { width: '95%', padding: 8, marginBottom: 8, backgroundColor: '#fff', borderRadius: 6, flexDirection: 'column', alignItems: 'stretch' },
   ctrlRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   btn: { padding: 6, backgroundColor: '#eee', borderRadius: 4, marginHorizontal: 6 },
   input: { borderWidth: 1, borderColor: '#ddd', padding: 6, minWidth: 48, textAlign: 'center' },
+  
   label: { fontSize: 12 },
-  hudRow: { width: '95%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  hudRow: { width: '95%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, paddingVertical: 10 },
   scoreBox: { flexDirection: 'row' },
   score: { fontSize: 14, marginLeft: 12 },
+  restartBtn: { paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#e44', borderRadius: 6 },
+  restartText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  slider: { width: '100%', height: 40, minWidth: 200 },
+  sliderValue: { textAlign: 'center', marginTop: 4, width: '100%' },
 });

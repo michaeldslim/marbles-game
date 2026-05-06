@@ -116,7 +116,7 @@ export class PhysicsEngine {
           a.vel.y = va_n_after * ny + va_t * ty;
           b.vel.x = vb_n_after * nx + vb_t * tx;
           b.vel.y = vb_n_after * ny + vb_t * ty;
-          // if either marble is the player (red), stop it after the collision
+          // stop player marble on collision with pile marbles
           if (a.color === '#f44') {
             a.vel.x = 0;
             a.vel.y = 0;
