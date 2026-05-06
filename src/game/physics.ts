@@ -1,5 +1,7 @@
 export type Vec = { x: number; y: number };
 
+import { ENGINE_DEFAULT_FRICTION, ENGINE_DEFAULT_RESTITUTION, PILE_MARBLE_RADIUS, PILE_MARBLE_FRICTION } from './constants';
+
 export interface Marble {
   id: number;
   pos: Vec;
@@ -17,9 +19,9 @@ export class PhysicsEngine {
   height: number;
   marbles: Marble[] = [];
   nextId = 1;
-  friction = 0.998;
+  friction = ENGINE_DEFAULT_FRICTION;
   // coefficient of restitution (bounciness) 0..1
-  restitution = 0.8;
+  restitution = ENGINE_DEFAULT_RESTITUTION;
 
   constructor(width: number, height: number) {
     this.width = width;
@@ -132,7 +134,7 @@ export class PhysicsEngine {
 }
 
 export function createTrianglePile(engine: PhysicsEngine, centerX: number, centerY: number, rows = 4) {
-  const radius = 14;
+  const radius = PILE_MARBLE_RADIUS;
   const spacing = radius * 2 + 2;
   for (let r = 0; r < rows; r++) {
     for (let i = 0; i <= r; i++) {
@@ -140,7 +142,7 @@ export function createTrianglePile(engine: PhysicsEngine, centerX: number, cente
       const y = centerY - r * (spacing * 0.87);
       // set very high per-marble friction multiplier (~no damping) for pile marbles
       // make even less damping so pile slides freely
-      engine.addMarble({ pos: { x, y }, vel: { x: 0, y: 0 }, radius, color: '#6a9', friction: 0.97555 });
+      engine.addMarble({ pos: { x, y }, vel: { x: 0, y: 0 }, radius, color: '#6a9', friction: PILE_MARBLE_FRICTION });
     }
   }
 }

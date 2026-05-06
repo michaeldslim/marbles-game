@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 import Svg, { Circle, Line, Rect, Ellipse, Polyline } from 'react-native-svg';
 import { PhysicsEngine, createTrianglePile, Marble } from '../game/physics';
+import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_FRICTION, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, AI_MARBLE_RADIUS, AI_BASE_SPEED, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TURN_MAX_WAIT_MS } from '../game/constants';
 
 const FPS = 60;
-const PLAYER_LAUNCH_SPEED = 140; // px/s per power unit (user preference)
 
 export default function GameView(): JSX.Element {
   const [size, setSize] = useState({ w: 360, h: 640 });
@@ -19,9 +19,9 @@ export default function GameView(): JSX.Element {
   const turnActiveRef = useRef<boolean>(false);
   const aiSnapshotRef = useRef<Set<number> | null>(null);
   const startedRef = useRef<boolean>(false);
-  const [friction, setFriction] = useState<number>(0.998);
-  const [restitution, setRestitution] = useState<number>(0.8);
-  const [power, setPower] = useState<number>(4.5);
+  const [friction, setFriction] = useState<number>(ENGINE_DEFAULT_FRICTION);
+  const [restitution, setRestitution] = useState<number>(ENGINE_DEFAULT_RESTITUTION);
+  const [power, setPower] = useState<number>(DEFAULT_PLAYER_POWER);
   const engineRef = useRef<PhysicsEngine | null>(null);
   const playerIdRef = useRef<number | null>(null);
   const aimingRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
@@ -43,7 +43,7 @@ export default function GameView(): JSX.Element {
       if (eng) {
         eng.step(dt);
         // detect moving marbles to know when a turn has settled (use threshold)
-        const moving = eng.marbles.filter((m) => !m.captured && Math.hypot(m.vel.x, m.vel.y) > 3).length;
+        const moving = eng.marbles.filter((m) => !m.captured && Math.hypot(m.vel.x, m.vel.y) > SETTLE_SPEED_THRESHOLD).length;
         // remove marbles that leave the circular boundary and award points to last shooter
         const centerX = boundaryCenterRef.current ? boundaryCenterRef.current.x : eng.width / 2;
         const centerY = boundaryCenterRef.current ? boundaryCenterRef.current.y : eng.height / 2;
@@ -73,14 +73,14 @@ export default function GameView(): JSX.Element {
           // also allow a maximum wait so AI doesn't stall when friction is very low
           const nowMs = Date.now();
           const turnStart = turnStartTimeRef.current ?? 0;
-          const maxWait = 1600; // ms
+          const maxWait = TURN_MAX_WAIT_MS; // ms
           if (moving === 0) settledCounterRef.current++; else settledCounterRef.current = 0;
-          if (settledCounterRef.current >= 3 || (turnStart && nowMs - turnStart > maxWait)) {
+          if (settledCounterRef.current >= SETTLE_FRAMES || (turnStart && nowMs - turnStart > maxWait)) {
             settledCounterRef.current = 0;
             console.log('tick: settled, turn=', turnRef.current, 'moving=', moving);
             if (turnRef.current === 'human') {
             // human turn finished -> move red marble to start and begin AI turn
-            const player = eng.marbles.find((m) => m.color === '#f44');
+              const player = eng.marbles.find((m) => m.color === '#f44');
             if (player) {
               player.pos.x = eng.width / 2;
               player.pos.y = eng.height - 80;
@@ -180,7 +180,7 @@ export default function GameView(): JSX.Element {
       boundaryRadiusRef.current = Math.min(maxDist + 12, maxAllowed);
       boundaryCenterRef.current = { x: cx, y: cy };
       const playerY = eng.height - 120;
-            const player = eng.addMarble({ pos: { x: newW / 2, y: playerY }, vel: { x: 0, y: 0 }, radius: 14, color: '#f44' });
+      const player = eng.addMarble({ pos: { x: newW / 2, y: playerY }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44' });
       playerIdRef.current = player.id;
       // reset scores and mark game as not started briefly to avoid scoring during setup
       setScore(0);
@@ -232,7 +232,7 @@ export default function GameView(): JSX.Element {
         if (!player && playerIdRef.current != null) player = eng.marbles.find((m) => m.id === playerIdRef.current) || null;
         if (player) playerIdRef.current = player.id;
         if (!player) {
-          const newPlayer = eng.addMarble({ pos: { x: eng.width / 2, y: eng.height - 80 }, vel: { x: 0, y: 0 }, radius: 14, color: '#f44' });
+          const newPlayer = eng.addMarble({ pos: { x: eng.width / 2, y: eng.height - 80 }, vel: { x: 0, y: 0 }, radius: PLAYER_MARBLE_RADIUS, color: '#f44' });
           playerIdRef.current = newPlayer.id;
           player = newPlayer;
         }
@@ -344,7 +344,7 @@ export default function GameView(): JSX.Element {
     if (!eng) return;
     console.log('aiShoot: starting');
     const aiStart = { x: eng.width / 2, y: eng.height - 80 };
-    const ai = eng.addMarble({ pos: { ...aiStart }, vel: { x: 0, y: 0 }, radius: 14, color: '#48f' });
+    const ai = eng.addMarble({ pos: { ...aiStart }, vel: { x: 0, y: 0 }, radius: AI_MARBLE_RADIUS, color: '#48f' });
     // aim roughly toward center with small random offset
     const center = { x: eng.width / 2, y: eng.height / 2 };
     const dx = center.x - aiStart.x + (Math.random() - 0.5) * 80;
@@ -352,8 +352,7 @@ export default function GameView(): JSX.Element {
     const mag = Math.hypot(dx, dy) || 1;
     const dirx = dx / mag;
     const diry = dy / mag;
-    const AI_SPEED = 180; // px/s per power unit
-    const vel = { x: dirx * AI_SPEED * 3.5, y: diry * AI_SPEED * 3.5 };
+    const vel = { x: dirx * AI_BASE_SPEED * DEFAULT_PLAYER_POWER, y: diry * AI_BASE_SPEED * DEFAULT_PLAYER_POWER };
     lastShooterRef.current = 'ai';
     eng.launchMarble(ai.id, vel);
     // debug
