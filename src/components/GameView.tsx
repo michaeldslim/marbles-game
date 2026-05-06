@@ -40,6 +40,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
   const cushionCountRef = useRef<number>(0);
   const [cushionCount, setCushionCount] = useState<number>(0);
   const [ballsHit, setBallsHit] = useState<number>(0);
+  const [billiardReady, setBilliardReady] = useState<boolean>(true);
 
   // main tick loop: run the physics step and rendering updates
   useEffect(() => {
@@ -95,6 +96,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
                 setBallsHit(0);
                 shotActiveRef.current = false;
                 settledCounterRef.current = 0;
+                setBilliardReady(true);
               }
             }
           }
@@ -300,6 +302,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
         const diry = dy / mag;
         const vel = { x: dirx * PLAYER_LAUNCH_SPEED * powerRef.current, y: diry * PLAYER_LAUNCH_SPEED * powerRef.current };
         shotActiveRef.current = true;
+        if (isBilliards) setBilliardReady(false);
         eng.launchMarble(playerIdRef.current, vel);
         aimingRef.current = null;
       },
@@ -412,6 +415,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
       shotActiveRef.current = false;
       settledCounterRef.current = 0;
       setScore(0);
+      setBilliardReady(true);
       setMarbles([...eng.marbles]);
       return;
     }
@@ -451,6 +455,9 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
         <TouchableOpacity style={styles.restartBtn} onPress={restart}>
           <Text style={styles.restartText}>Restart</Text>
         </TouchableOpacity>
+        {isBilliards && billiardReady && (
+          <Text style={styles.readyText}>Ready!</Text>
+        )}
         <View style={styles.scoreBox}>
           {!isBilliards && <Text style={styles.score}>Score: {score}</Text>}
         </View>
@@ -532,6 +539,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#ddd', padding: 6, minWidth: 48, textAlign: 'center' },
   label: { fontSize: 12 },
   hudRow: { width: '95%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 10 },
+  readyText: { flex: 1, fontSize: 16, fontWeight: '700', color: '#2cc47a', textAlign: 'center' },
   scoreBox: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
   score: { fontSize: 14, marginLeft: 12 },
   restartBtn: { width: 72, height: 36, backgroundColor: '#e44', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
