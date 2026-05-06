@@ -12,6 +12,8 @@ export interface Marble {
   stopped?: boolean;
   // optional per-marble friction multiplier (0..1). If not set, engine.friction is used.
   friction?: number;
+  // counts how many times this marble has bounced off a wall (used for 3-cushion scoring)
+  wallHitCount?: number;
 }
 
 export class PhysicsEngine {
@@ -60,19 +62,23 @@ export class PhysicsEngine {
       if (m.pos.x - m.radius < 0) {
         m.pos.x = m.radius;
         m.vel.x *= -this.restitution;
+        m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
       if (m.pos.x + m.radius > this.width) {
         m.pos.x = this.width - m.radius;
         m.vel.x *= -this.restitution;
+        m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
       if (m.pos.y - m.radius < 0) {
         m.pos.y = m.radius;
         m.vel.y *= -this.restitution;
+        m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
       if (m.pos.y + m.radius > this.height) {
         // captured when fully out (simple rule: if touching bottom edge)
         m.pos.y = this.height - m.radius;
         m.vel.y *= -this.restitution;
+        m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
     }
 

@@ -7,7 +7,7 @@ export const DEFAULT_PLAYER_POWER = 4.5;
 export const ENGINE_DEFAULT_RESTITUTION = 0.8;
 
 // Pile marble tuning
-export const PILE_MARBLE_FRICTION = 0.95;
+export const PILE_MARBLE_FRICTION = 0.97;
 export const PLAYER_MARBLE_FRICTION = 0.97;
 export const PILE_MARBLE_RADIUS = 14;
 
@@ -18,4 +18,7 @@ export const PLAYER_MARBLE_RADIUS = 14;
 export const SETTLE_SPEED_THRESHOLD = 0.5;
 export const SETTLE_FRAMES = 30;
 export const TELEPORT_DELAY_MS = 700;
+
+// 3-Cushion billiards ball friction (lower = more deceleration)
+export const BILLIARDS_BALL_FRICTION = 0.993;
 

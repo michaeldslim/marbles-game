@@ -1,8 +1,93 @@
+# Dependency directories
 node_modules/
+jspm_packages/
+
+# Expo
 .expo/
-.expo-shared/
+eas.json
+
 ios/
-android/
-web-build/
-*.log
+ios/build/
+ios/Pods/
+
+# npm lockfile (using npm now)
+# ignore yarn lock since we're using npm
+yarn.lock
+
+# Android 빌드 결과물만 무시
+android/.gradle/
+android/build/
+android/app/release/
+android/app/bin/
+android/app/build/
+android/captures/
+android/local.properties
+
+# Distribution directories
+dist/
+build/
+.idea/
+.gradle
+
+# Environment files
 .env
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug.log
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+
+# Coverage reports
+coverage/
+.coverage
+htmlcov/
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Package files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+# Allow Gradle wrapper JAR
+!android/gradle/wrapper/gradle-wrapper.jar
+!android/gradle/wrapper/gradle-wrapper.properties
+!android/gradle/wrapper/gradle-wrapper.lock
+
+# Logs
+logs
+*.log

@@ -1,17 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Slider from '@react-native-community/slider';
 import Svg, { Circle, Line, Rect, Ellipse, Polyline } from 'react-native-svg';
 import { PhysicsEngine, createTrianglePile, Marble } from '../game/physics';
-import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, PLAYER_MARBLE_FRICTION, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TELEPORT_DELAY_MS } from '../game/constants';
+import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, PLAYER_MARBLE_FRICTION, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TELEPORT_DELAY_MS, BILLIARDS_BALL_FRICTION } from '../game/constants';
 
 const FPS = 60;
 
-export default function GameView(): JSX.Element {
+interface Props {
+  gameMode: 'marbles' | 'billiards';
+  onBack: () => void;
+}
+
+export default function GameView({ gameMode, onBack }: Props): JSX.Element {
+  const isBilliards = gameMode === 'billiards';
+
   const [size, setSize] = useState({ w: 360, h: 640 });
   const [marbles, setMarbles] = useState<Marble[]>([]);
   const [score, setScore] = useState<number>(0);
-  const [boundaryShape, setBoundaryShape] = useState<'circle' | 'square'>('circle');
   const startedRef = useRef<boolean>(false);
   const shotActiveRef = useRef<boolean>(false);
   const [restitution, setRestitution] = useState<number>(ENGINE_DEFAULT_RESTITUTION);
@@ -24,8 +30,16 @@ export default function GameView(): JSX.Element {
   const aimingRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
   const boundaryRadiusRef = useRef<number | null>(null);
   const boundaryCenterRef = useRef<{ x: number; y: number } | null>(null);
-  const boundaryShapeRef = useRef<'circle' | 'square'>('circle');
   const settledCounterRef = useRef<number>(0);
+
+  // Billiards-specific refs
+  const yellowIdRef = useRef<number | null>(null);
+  const redBallIdRef = useRef<number | null>(null);
+  const yellowHitRef = useRef<boolean>(false);
+  const redBallHitRef = useRef<boolean>(false);
+  const cushionCountRef = useRef<number>(0);
+  const [cushionCount, setCushionCount] = useState<number>(0);
+  const [ballsHit, setBallsHit] = useState<number>(0);
 
   // main tick loop: run the physics step and rendering updates
   useEffect(() => {
@@ -38,58 +52,101 @@ export default function GameView(): JSX.Element {
       const eng = engineRef.current;
       if (eng) {
         eng.step(dt);
-        // settle when the player marble specifically has stopped moving
-        const playerMarble = eng.marbles.find((m) => m.color === '#f44');
-        const playerMoving = playerMarble && Math.hypot(playerMarble.vel.x, playerMarble.vel.y) > SETTLE_SPEED_THRESHOLD;
-        // remove marbles that leave the circular boundary and award points to last shooter
-        const centerX = boundaryCenterRef.current ? boundaryCenterRef.current.x : eng.width / 2;
-        const centerY = boundaryCenterRef.current ? boundaryCenterRef.current.y : eng.height / 2;
-        const boundaryRadius = boundaryRadiusRef.current != null ? boundaryRadiusRef.current : Math.min(eng.width, eng.height) * 0.32;
-        for (let i = eng.marbles.length - 1; i >= 0; i--) {
-          const m = eng.marbles[i];
-          const dx = m.pos.x - centerX;
-          const dy = m.pos.y - centerY;
-          const outside = boundaryShapeRef.current === 'square'
-            ? Math.abs(dx) - m.radius > boundaryRadius || Math.abs(dy) - m.radius > boundaryRadius
-            : Math.hypot(dx, dy) - m.radius > boundaryRadius;
-          if (outside) {
-            // do not remove the player marble here (keeps player persistent)
-            if (m.color === '#f44') continue;
-            // remove from engine
-            eng.marbles.splice(i, 1);
-            // award points to player, ignore during initial setup
-            if (startedRef.current) {
-              setScore((s) => s + 1);
+
+        if (isBilliards) {
+          // ── 3-Cushion billiards logic ──
+          if (shotActiveRef.current) {
+            // Track which object balls were hit (velocity spikes from stationary)
+            const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
+            const redBall = eng.marbles.find((m) => m.id === redBallIdRef.current);
+            if (yellow && !yellowHitRef.current && Math.hypot(yellow.vel.x, yellow.vel.y) > SETTLE_SPEED_THRESHOLD * 4) {
+              yellowHitRef.current = true;
+              setBallsHit((prev) => prev + 1);
+            }
+            if (redBall && !redBallHitRef.current && Math.hypot(redBall.vel.x, redBall.vel.y) > SETTLE_SPEED_THRESHOLD * 4) {
+              redBallHitRef.current = true;
+              setBallsHit((prev) => prev + 1);
+            }
+            // Sync live cushion count display
+            const cue = eng.marbles.find((m) => m.id === playerIdRef.current);
+            const c = cue?.wallHitCount ?? 0;
+            if (c !== cushionCountRef.current) {
+              cushionCountRef.current = c;
+              setCushionCount(c);
+            }
+            // Settle detection: all balls slow
+            const allSlow = eng.marbles.every((m) => Math.hypot(m.vel.x, m.vel.y) <= SETTLE_SPEED_THRESHOLD);
+            if (!allSlow) {
+              settledCounterRef.current = 0;
+            } else {
+              settledCounterRef.current++;
+              if (settledCounterRef.current >= SETTLE_FRAMES) {
+                // Check 3-cushion scoring condition
+                const cushions = cue?.wallHitCount ?? 0;
+                if (yellowHitRef.current && redBallHitRef.current && cushions >= 3) {
+                  setScore((s) => s + 1);
+                }
+                // Reset for next shot
+                if (cue) cue.wallHitCount = 0;
+                yellowHitRef.current = false;
+                redBallHitRef.current = false;
+                cushionCountRef.current = 0;
+                setCushionCount(0);
+                setBallsHit(0);
+                shotActiveRef.current = false;
+                settledCounterRef.current = 0;
+              }
             }
           }
-        }
-        // auto-restart if all pile marbles are gone (only after game has started)
-        if (startedRef.current) {
-          const pileMarbles = eng.marbles.filter((m) => m.color !== '#f44');
-          if (pileMarbles.length === 0) {
-            startedRef.current = false;
-            shotActiveRef.current = false;
-            settledCounterRef.current = 0;
-            setTimeout(() => restart(), 800);
-          }
-        }
-        // teleport player back when all marbles settle (only after a shot)
-        if (shotActiveRef.current) {
-          if (!playerMoving) settledCounterRef.current++; else settledCounterRef.current = 0;
-          if (settledCounterRef.current === SETTLE_FRAMES) {
-            settledCounterRef.current = 0;
-            shotActiveRef.current = false;
-            const eng2 = eng;
-            setTimeout(() => {
-              const player = eng2.marbles.find((m) => m.color === '#f44');
-              if (player) {
-                player.pos.x = eng2.width / 2;
-                player.pos.y = eng2.height - 60;
-                player.vel.x = 0;
-                player.vel.y = 0;
-                player.stopped = false;
+        } else {
+          // ── Marbles game logic ──
+          const playerMarble = eng.marbles.find((m) => m.id === playerIdRef.current);
+          const playerMoving = playerMarble && Math.hypot(playerMarble.vel.x, playerMarble.vel.y) > SETTLE_SPEED_THRESHOLD;
+          // remove marbles that leave the square boundary and award points
+          const centerX = boundaryCenterRef.current ? boundaryCenterRef.current.x : eng.width / 2;
+          const centerY = boundaryCenterRef.current ? boundaryCenterRef.current.y : eng.height / 2;
+          const boundaryRadius = boundaryRadiusRef.current != null ? boundaryRadiusRef.current : Math.min(eng.width, eng.height) * 0.32;
+          for (let i = eng.marbles.length - 1; i >= 0; i--) {
+            const m = eng.marbles[i];
+            const dx = m.pos.x - centerX;
+            const dy = m.pos.y - centerY;
+            const outside = Math.abs(dx) - m.radius > boundaryRadius || Math.abs(dy) - m.radius > boundaryRadius;
+            if (outside) {
+              if (m.color === '#f44') continue;
+              eng.marbles.splice(i, 1);
+              if (startedRef.current) {
+                setScore((s) => s + 1);
               }
-            }, TELEPORT_DELAY_MS);
+            }
+          }
+          // auto-restart if all pile marbles are gone (only after game has started)
+          if (startedRef.current) {
+            const pileMarbles = eng.marbles.filter((m) => m.color !== '#f44');
+            if (pileMarbles.length === 0) {
+              startedRef.current = false;
+              shotActiveRef.current = false;
+              settledCounterRef.current = 0;
+              setTimeout(() => restart(), 800);
+            }
+          }
+          // teleport player back when all marbles settle (only after a shot)
+          if (shotActiveRef.current) {
+            if (!playerMoving) settledCounterRef.current++; else settledCounterRef.current = 0;
+            if (settledCounterRef.current === SETTLE_FRAMES) {
+              settledCounterRef.current = 0;
+              shotActiveRef.current = false;
+              const eng2 = eng;
+              setTimeout(() => {
+                const player = eng2.marbles.find((m) => m.id === playerIdRef.current);
+                if (player) {
+                  player.pos.x = eng2.width / 2;
+                  player.pos.y = eng2.height - 60;
+                  player.vel.x = 0;
+                  player.vel.y = 0;
+                  player.stopped = false;
+                }
+              }, TELEPORT_DELAY_MS);
+            }
           }
         }
         setMarbles([...eng.marbles]);
@@ -110,22 +167,46 @@ export default function GameView(): JSX.Element {
     eng.restitution = restitution;
   }, [restitution]);
 
-  useEffect(() => { boundaryShapeRef.current = boundaryShape; }, [boundaryShape]);
-
   useEffect(() => {
     powerRef.current = power;
   }, [power]);
+
+  const setupBilliards = (eng: PhysicsEngine) => {
+    const w = eng.width;
+    const h = eng.height;
+    const r = PLAYER_MARBLE_RADIUS;
+    // White cue ball (player) — lower right area
+    const cue = eng.addMarble({ pos: { x: w * 0.55, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
+    playerIdRef.current = cue.id;
+    // Yellow object ball — lower left area
+    const yellow = eng.addMarble({ pos: { x: w * 0.45, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
+    yellowIdRef.current = yellow.id;
+    // Red object ball — upper center
+    const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: BILLIARDS_BALL_FRICTION });
+    redBallIdRef.current = redBall.id;
+  };
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     const newW = Math.max(320, width);
     const newH = Math.max(480, height);
     setSize({ w: newW, h: newH });
+    const boardHeight = isBilliards ? newH - 120 : newH - 200;
     // create engine once when we have a layout and engine not yet created
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(newW, newH - 200);
+      const eng = new PhysicsEngine(newW, boardHeight);
       eng.restitution = restitution;
-      // place pile higher on the board so play area moves up (relative to engine height)
+
+      if (isBilliards) {
+        setupBilliards(eng);
+        engineRef.current = eng;
+        setScore(0);
+        startedRef.current = true;
+        setMarbles([...eng.marbles]);
+        return;
+      }
+
+      // Marbles setup: place pile higher on the board so play area moves up
       const engHeight = eng.height;
       const pileCenterY = engHeight * 0.28 + 40;
       createTrianglePile(eng, newW / 2, pileCenterY, 5);
@@ -169,7 +250,7 @@ export default function GameView(): JSX.Element {
     const engRef = engineRef.current;
     if (engRef) {
       engRef.width = newW;
-      engRef.height = newH - 200;
+      engRef.height = boardHeight;
     }
   };
 
@@ -228,10 +309,18 @@ export default function GameView(): JSX.Element {
   const renderMarbles = () => {
     return marbles.map((m) => {
       if (m.captured) return null;
+      const isCueBall = isBilliards && m.id === playerIdRef.current;
       return (
         <React.Fragment key={m.id}>
           <Ellipse cx={m.pos.x} cy={m.pos.y + m.radius * 0.6} rx={m.radius * 1.15} ry={m.radius * 0.5} fill="#000" opacity={0.12} />
-          <Circle cx={m.pos.x} cy={m.pos.y} r={m.radius} fill={m.color || '#66c'} />
+          <Circle
+            cx={m.pos.x}
+            cy={m.pos.y}
+            r={m.radius}
+            fill={m.color || '#66c'}
+            stroke={isCueBall ? '#999' : 'none'}
+            strokeWidth={isCueBall ? 1.5 : 0}
+          />
         </React.Fragment>
       );
     });
@@ -303,15 +392,39 @@ export default function GameView(): JSX.Element {
   };
 
   const restart = () => {
-    const w = size.w;
-    const h = size.h;
+    if (isBilliards) {
+      // Reposition balls to starting positions without recreating the engine
+      const eng = engineRef.current;
+      if (!eng) return;
+      const w = eng.width;
+      const h = eng.height;
+      const cue = eng.marbles.find((m) => m.id === playerIdRef.current);
+      const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
+      const redBall = eng.marbles.find((m) => m.id === redBallIdRef.current);
+      if (cue) { cue.pos = { x: w * 0.55, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
+      if (yellow) { yellow.pos = { x: w * 0.45, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
+      if (redBall) { redBall.pos = { x: w * 0.5, y: h * 0.3 }; redBall.vel = { x: 0, y: 0 }; }
+      yellowHitRef.current = false;
+      redBallHitRef.current = false;
+      cushionCountRef.current = 0;
+      setCushionCount(0);
+      setBallsHit(0);
+      shotActiveRef.current = false;
+      settledCounterRef.current = 0;
+      setScore(0);
+      setMarbles([...eng.marbles]);
+      return;
+    }
+    const existingEng = engineRef.current;
+    const w = existingEng ? existingEng.width : size.w;
+    const engH = existingEng ? existingEng.height : size.h - 200;
     boundaryRadiusRef.current = null;
     boundaryCenterRef.current = null;
     settledCounterRef.current = 0;
     startedRef.current = false;
     shotActiveRef.current = false;
     setScore(0);
-    const eng = new PhysicsEngine(w, h - 200);
+    const eng = new PhysicsEngine(w, engH);
     eng.restitution = restitution;
     const pileCenterY = eng.height * 0.28 + 40;
     createTrianglePile(eng, w / 2, pileCenterY, 5);
@@ -332,20 +445,24 @@ export default function GameView(): JSX.Element {
   return (
     <View style={styles.container} onLayout={onLayout}>
       <View style={styles.hudRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.restartBtn} onPress={restart}>
           <Text style={styles.restartText}>Restart</Text>
         </TouchableOpacity>
         <View style={styles.scoreBox}>
-          <View style={styles.shapePicker}>
-            {(['circle', 'square'] as const).map((s) => (
-              <TouchableOpacity key={s} style={[styles.shapeBtn, boundaryShape === s && styles.shapeBtnActive]} onPress={() => setBoundaryShape(s)}>
-                <Text style={[styles.shapeBtnText, boundaryShape === s && styles.shapeBtnTextActive]}>{s}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Text style={styles.score}>Score: {score}</Text>
+          {!isBilliards && <Text style={styles.score}>Score: {score}</Text>}
         </View>
       </View>
+      {isBilliards && (
+        <View style={styles.billiardHud}>
+          <Text style={styles.billiardScore}>Score: {score}</Text>
+          <Text style={styles.billiardStat}>Cushions: {cushionCount}/3</Text>
+          <Text style={styles.billiardStat}>Balls hit: {ballsHit}/2</Text>
+        </View>
+      )}
+      {!isBilliards && (
       <View style={styles.controls}>
           <View style={styles.controlItem}>
             <Text>Restitution</Text>
@@ -374,24 +491,31 @@ export default function GameView(): JSX.Element {
             />
           </View>
         </View>
+      )}
       <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <Svg width={size.w} height={size.h - 200}>
-          <Rect x={0} y={0} width={size.w} height={size.h - 200} fill="#fff6e6" />
-            {/* visible play boundary (circle) */}
-            {(() => {
-                const bw = size.w;
-                const bh = size.h - 200;
-                const cx = boundaryCenterRef.current ? boundaryCenterRef.current.x : bw / 2;
-                const cy = boundaryCenterRef.current ? boundaryCenterRef.current.y : bh / 2;
-                const r = boundaryRadiusRef.current != null ? boundaryRadiusRef.current : Math.min(bw, bh) * 0.32;
-                if (boundaryShape === 'square') {
+        {(() => {
+          const boardW = size.w;
+          const boardH = isBilliards ? size.h - 120 : size.h - 200;
+          return (
+            <Svg width={boardW} height={boardH}>
+              <Rect x={0} y={0} width={boardW} height={boardH} fill={isBilliards ? '#2d7a3e' : '#fff6e6'} />
+              {isBilliards ? (
+                <Rect x={6} y={6} width={boardW - 12} height={boardH - 12} fill="none" stroke="#1a4a28" strokeWidth={10} />
+              ) : (
+                (() => {
+                  const bw = boardW;
+                  const bh = boardH;
+                  const cx = boundaryCenterRef.current ? boundaryCenterRef.current.x : bw / 2;
+                  const cy = boundaryCenterRef.current ? boundaryCenterRef.current.y : bh / 2;
+                  const r = boundaryRadiusRef.current != null ? boundaryRadiusRef.current : Math.min(bw, bh) * 0.32;
                   return <Rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} fill="none" stroke="#2a9df4" strokeWidth={6} />;
-                }
-                return <Circle cx={cx} cy={cy} r={r} fill="none" stroke="#2a9df4" strokeWidth={6} />;
-              })()}
-          {renderMarbles()}
-          {aimLine()}
-        </Svg>
+                })()
+              )}
+              {renderMarbles()}
+              {aimLine()}
+            </Svg>
+          );
+        })()}
       </View>
     </View>
   );
@@ -406,18 +530,17 @@ const styles = StyleSheet.create({
   ctrlRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   btn: { padding: 6, backgroundColor: '#eee', borderRadius: 4, marginHorizontal: 6 },
   input: { borderWidth: 1, borderColor: '#ddd', padding: 6, minWidth: 48, textAlign: 'center' },
-  
   label: { fontSize: 12 },
-  hudRow: { width: '95%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, paddingVertical: 10 },
-  scoreBox: { flexDirection: 'row', alignItems: 'center' },
+  hudRow: { width: '95%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 10 },
+  scoreBox: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
   score: { fontSize: 14, marginLeft: 12 },
-  shapePicker: { flexDirection: 'row', marginLeft: 12, gap: 6 },
-  shapeBtn: { width: 72, height: 36, borderRadius: 6, borderWidth: 1, borderColor: '#aaa', alignItems: 'center', justifyContent: 'center' },
-  shapeBtnActive: { backgroundColor: '#2a9df4', borderColor: '#2a9df4' },
-  shapeBtnText: { fontSize: 14, color: '#333' },
-  shapeBtnTextActive: { color: '#fff' },
   restartBtn: { width: 72, height: 36, backgroundColor: '#e44', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   restartText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  backBtn: { width: 36, height: 36, backgroundColor: '#666', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: '#fff', fontWeight: '700', fontSize: 18 },
   slider: { width: '100%', height: 40, minWidth: 200 },
   sliderValue: { textAlign: 'center', marginTop: 4, width: '100%' },
+  billiardHud: { flexDirection: 'row', gap: 16, paddingBottom: 4, alignItems: 'center' },
+  billiardScore: { fontSize: 16, fontWeight: '700', color: '#222' },
+  billiardStat: { fontSize: 14, fontWeight: '600', color: '#333' },
 });
