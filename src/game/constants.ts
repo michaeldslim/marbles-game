@@ -20,5 +20,11 @@ export const SETTLE_FRAMES = 30;
 export const TELEPORT_DELAY_MS = 700;
 
 // 3-Cushion billiards ball friction (lower = more deceleration)
-export const BILLIARDS_BALL_FRICTION = 0.993;
-
+export const BILLIARDS_BALL_FRICTION = 0.991;
+// Billiards cue launch speed — effective speed = BILLIARDS_LAUNCH_SPEED * DEFAULT_PLAYER_POWER
+// 150 * 4.5 = 675, enough to reach all cushions without being uncontrollably fast
+export const BILLIARDS_LAUNCH_SPEED = 205;
+// Frames of all-balls-slow before declaring "Ready" in billiards (~0.2s at 60fps)
+export const BILLIARDS_SETTLE_FRAMES = 10;
+// Billiards ball radius in pixels 14, 15, 16
+export const BILLIARDS_BALL_RADIUS = 16;

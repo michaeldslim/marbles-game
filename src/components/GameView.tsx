@@ -3,9 +3,7 @@ import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpaci
 import Slider from '@react-native-community/slider';
 import Svg, { Circle, Line, Rect, Ellipse, Polyline } from 'react-native-svg';
 import { PhysicsEngine, createTrianglePile, Marble } from '../game/physics';
-import { PLAYER_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, PLAYER_MARBLE_FRICTION, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, TELEPORT_DELAY_MS, BILLIARDS_BALL_FRICTION } from '../game/constants';
-
-const FPS = 60;
+import { PLAYER_LAUNCH_SPEED, BILLIARDS_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, PLAYER_MARBLE_FRICTION, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, BILLIARDS_SETTLE_FRAMES, BILLIARDS_BALL_RADIUS, TELEPORT_DELAY_MS, BILLIARDS_BALL_FRICTION } from '../game/constants';
 
 interface Props {
   gameMode: 'marbles' | 'billiards';
@@ -81,7 +79,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
               settledCounterRef.current = 0;
             } else {
               settledCounterRef.current++;
-              if (settledCounterRef.current >= SETTLE_FRAMES) {
+              if (settledCounterRef.current >= BILLIARDS_SETTLE_FRAMES) {
                 // Check 3-cushion scoring condition
                 const cushions = cue?.wallHitCount ?? 0;
                 if (yellowHitRef.current && redBallHitRef.current && cushions >= 3) {
@@ -176,12 +174,12 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
   const setupBilliards = (eng: PhysicsEngine) => {
     const w = eng.width;
     const h = eng.height;
-    const r = PLAYER_MARBLE_RADIUS;
+    const r = BILLIARDS_BALL_RADIUS;
     // White cue ball (player) — lower right area
-    const cue = eng.addMarble({ pos: { x: w * 0.55, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
+    const cue = eng.addMarble({ pos: { x: w * 0.60, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
     playerIdRef.current = cue.id;
     // Yellow object ball — lower left area
-    const yellow = eng.addMarble({ pos: { x: w * 0.45, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
+    const yellow = eng.addMarble({ pos: { x: w * 0.40, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
     yellowIdRef.current = yellow.id;
     // Red object ball — upper center
     const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: BILLIARDS_BALL_FRICTION });
@@ -300,7 +298,8 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
         const mag = Math.hypot(dx, dy) || 1;
         const dirx = dx / mag;
         const diry = dy / mag;
-        const vel = { x: dirx * PLAYER_LAUNCH_SPEED * powerRef.current, y: diry * PLAYER_LAUNCH_SPEED * powerRef.current };
+        const launchSpeed = isBilliards ? BILLIARDS_LAUNCH_SPEED : PLAYER_LAUNCH_SPEED;
+        const vel = { x: dirx * launchSpeed * powerRef.current, y: diry * launchSpeed * powerRef.current };
         shotActiveRef.current = true;
         if (isBilliards) setBilliardReady(false);
         eng.launchMarble(playerIdRef.current, vel);
@@ -313,6 +312,9 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     return marbles.map((m) => {
       if (m.captured) return null;
       const isCueBall = isBilliards && m.id === playerIdRef.current;
+      const isRedBall = isBilliards && m.id === redBallIdRef.current;
+      const isYellow = isBilliards && m.id === yellowIdRef.current;
+      const dotColor = isRedBall ? '#ffffff' : (isCueBall || isYellow) ? '#cc2200' : null;
       return (
         <React.Fragment key={m.id}>
           <Ellipse cx={m.pos.x} cy={m.pos.y + m.radius * 0.6} rx={m.radius * 1.15} ry={m.radius * 0.5} fill="#000" opacity={0.12} />
@@ -324,6 +326,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
             stroke={isCueBall ? '#999' : 'none'}
             strokeWidth={isCueBall ? 1.5 : 0}
           />
+          {dotColor && <Circle cx={m.pos.x} cy={m.pos.y} r={3} fill={dotColor} />}
         </React.Fragment>
       );
     });
@@ -339,7 +342,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     const ey = aim.y || sy;
     const dx = ex - sx;
     const dy = ey - sy;
-    const LAUNCH_SPEED = PLAYER_LAUNCH_SPEED;
+    const LAUNCH_SPEED = isBilliards ? BILLIARDS_LAUNCH_SPEED : PLAYER_LAUNCH_SPEED;
     const mag = Math.hypot(dx, dy) || 1;
     const dirx = dx / mag;
     const diry = dy / mag;
@@ -381,7 +384,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
       pts.push(px, py);
     }
     const ptsStr = pts.join(' ');
-    return <Polyline points={ptsStr} fill="none" stroke="#222" strokeWidth={2} strokeOpacity={0.45} strokeDasharray={[6, 6]} />;
+    return <Polyline points={ptsStr} fill="none" stroke={isBilliards ? '#ffffff' : '#222'} strokeWidth={isBilliards ? 3 : 2} strokeOpacity={0.65} strokeDasharray={[6, 6]} />;
   };
 
   const aimLine = () => {
@@ -404,8 +407,8 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
       const cue = eng.marbles.find((m) => m.id === playerIdRef.current);
       const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
       const redBall = eng.marbles.find((m) => m.id === redBallIdRef.current);
-      if (cue) { cue.pos = { x: w * 0.55, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
-      if (yellow) { yellow.pos = { x: w * 0.45, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
+      if (cue) { cue.pos = { x: w * 0.60, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
+      if (yellow) { yellow.pos = { x: w * 0.40, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
       if (redBall) { redBall.pos = { x: w * 0.5, y: h * 0.3 }; redBall.vel = { x: 0, y: 0 }; }
       yellowHitRef.current = false;
       redBallHitRef.current = false;
@@ -519,7 +522,7 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
                 })()
               )}
               {renderMarbles()}
-              {aimLine()}
+              {isBilliards ? renderTrajectory() : aimLine()}
             </Svg>
           );
         })()}
