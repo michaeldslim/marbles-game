@@ -14,6 +14,8 @@ export interface Marble {
   friction?: number;
   // counts how many times this marble has bounced off a wall (used for 3-cushion scoring)
   wallHitCount?: number;
+  // id of the last marble that directly collided with this one
+  lastHitById?: number;
 }
 
 export class PhysicsEngine {
@@ -117,6 +119,9 @@ export class PhysicsEngine {
           const J = -(1 + e) * rel / 2;
           const va_n_after = va_n + J;
           const vb_n_after = vb_n - J;
+          // record direct hit source for billiards scoring
+          a.lastHitById = b.id;
+          b.lastHitById = a.id;
           // convert back to velocity vectors
           a.vel.x = va_n_after * nx + va_t * tx;
           a.vel.y = va_n_after * ny + va_t * ty;

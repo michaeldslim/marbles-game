@@ -36,6 +36,8 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
   const yellowHitRef = useRef<boolean>(false);
   const redBallHitRef = useRef<boolean>(false);
   const cushionCountRef = useRef<number>(0);
+  const cushionAtFirstHitRef = useRef<number>(-1);  // cushions when 1st object ball was hit
+  const cushionAtSecondHitRef = useRef<number>(-1); // cushions when 2nd object ball was hit
   const [cushionCount, setCushionCount] = useState<number>(0);
   const [ballsHit, setBallsHit] = useState<number>(0);
   const [billiardReady, setBilliardReady] = useState<boolean>(true);
@@ -55,23 +57,28 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
         if (isBilliards) {
           // ── 3-Cushion billiards logic ──
           if (shotActiveRef.current) {
-            // Track which object balls were hit (velocity spikes from stationary)
+            // Track which object balls the WHITE cue ball directly hit, recording cushion count at moment of each hit
             const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
             const redBall = eng.marbles.find((m) => m.id === redBallIdRef.current);
-            if (yellow && !yellowHitRef.current && Math.hypot(yellow.vel.x, yellow.vel.y) > SETTLE_SPEED_THRESHOLD * 4) {
-              yellowHitRef.current = true;
-              setBallsHit((prev) => prev + 1);
-            }
-            if (redBall && !redBallHitRef.current && Math.hypot(redBall.vel.x, redBall.vel.y) > SETTLE_SPEED_THRESHOLD * 4) {
-              redBallHitRef.current = true;
-              setBallsHit((prev) => prev + 1);
-            }
+            const cueId = playerIdRef.current;
             // Sync live cushion count display
             const cue = eng.marbles.find((m) => m.id === playerIdRef.current);
             const c = cue?.wallHitCount ?? 0;
             if (c !== cushionCountRef.current) {
               cushionCountRef.current = c;
               setCushionCount(c);
+            }
+            if (yellow && !yellowHitRef.current && yellow.lastHitById === cueId && Math.hypot(yellow.vel.x, yellow.vel.y) > SETTLE_SPEED_THRESHOLD) {
+              yellowHitRef.current = true;
+              if (cushionAtFirstHitRef.current === -1) cushionAtFirstHitRef.current = c;
+              else if (cushionAtSecondHitRef.current === -1) cushionAtSecondHitRef.current = c;
+              setBallsHit((prev) => prev + 1);
+            }
+            if (redBall && !redBallHitRef.current && redBall.lastHitById === cueId && Math.hypot(redBall.vel.x, redBall.vel.y) > SETTLE_SPEED_THRESHOLD) {
+              redBallHitRef.current = true;
+              if (cushionAtFirstHitRef.current === -1) cushionAtFirstHitRef.current = c;
+              else if (cushionAtSecondHitRef.current === -1) cushionAtSecondHitRef.current = c;
+              setBallsHit((prev) => prev + 1);
             }
             // Settle detection: all balls slow
             const allSlow = eng.marbles.every((m) => Math.hypot(m.vel.x, m.vel.y) <= SETTLE_SPEED_THRESHOLD);
@@ -80,9 +87,15 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
             } else {
               settledCounterRef.current++;
               if (settledCounterRef.current >= BILLIARDS_SETTLE_FRAMES) {
-                // Check 3-cushion scoring condition
-                const cushions = cue?.wallHitCount ?? 0;
-                if (yellowHitRef.current && redBallHitRef.current && cushions >= 3) {
+                // 3-Cushion scoring:
+                // Option 1: hit ball A → 3+ cushions → hit ball B  (cushionsAtSecond - cushionsAtFirst >= 3)
+                // Option 2: 3+ cushions first → hit both balls      (cushionsAtFirst >= 3)
+                const bothHit = yellowHitRef.current && redBallHitRef.current;
+                const c1 = cushionAtFirstHitRef.current;
+                const c2 = cushionAtSecondHitRef.current;
+                const option1 = bothHit && c1 >= 0 && c2 >= 0 && (c2 - c1 >= 3);
+                const option2 = bothHit && c1 >= 3;
+                if (option1 || option2) {
                   setScore((s) => s + 1);
                 }
                 // Reset for next shot
@@ -90,6 +103,8 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
                 yellowHitRef.current = false;
                 redBallHitRef.current = false;
                 cushionCountRef.current = 0;
+                cushionAtFirstHitRef.current = -1;
+                cushionAtSecondHitRef.current = -1;
                 setCushionCount(0);
                 setBallsHit(0);
                 shotActiveRef.current = false;
@@ -176,10 +191,10 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     const h = eng.height;
     const r = BILLIARDS_BALL_RADIUS;
     // White cue ball (player) — lower right area
-    const cue = eng.addMarble({ pos: { x: w * 0.60, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
+    const cue = eng.addMarble({ pos: { x: w * 0.58, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
     playerIdRef.current = cue.id;
     // Yellow object ball — lower left area
-    const yellow = eng.addMarble({ pos: { x: w * 0.40, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
+    const yellow = eng.addMarble({ pos: { x: w * 0.42, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
     yellowIdRef.current = yellow.id;
     // Red object ball — upper center
     const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: BILLIARDS_BALL_FRICTION });
@@ -355,30 +370,32 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     let py = player ? player.pos.y : sy;
     let vx = initialVel.x;
     let vy = initialVel.y;
-    const dt = 1 / 30;
-    const steps = 40;
-    const fr = eng.friction;
+    const r = player ? player.radius : 0;
+    const dt = 1 / 60; // match actual tick rate
+    const steps = 80;  // cover same real time as before (80/60 ≈ 1.3s)
+    // use the ball's own friction (billiards balls have BILLIARDS_BALL_FRICTION, not eng.friction)
+    const fr = player?.friction ?? eng.friction;
     const e = eng.restitution;
     for (let i = 0; i < steps; i++) {
       px += vx * dt;
       py += vy * dt;
       vx *= fr;
       vy *= fr;
-      // simple wall reflection
-      if (px < 0) {
-        px = 0;
+      // wall reflection with ball radius offset (matches physics engine)
+      if (px - r < 0) {
+        px = r;
         vx *= -e;
       }
-      if (px > size.w) {
-        px = size.w;
+      if (px + r > eng.width) {
+        px = eng.width - r;
         vx *= -e;
       }
-      if (py < 0) {
-        py = 0;
+      if (py - r < 0) {
+        py = r;
         vy *= -e;
       }
-      if (py > eng.height) {
-        py = eng.height;
+      if (py + r > eng.height) {
+        py = eng.height - r;
         vy *= -e;
       }
       pts.push(px, py);
@@ -407,12 +424,14 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
       const cue = eng.marbles.find((m) => m.id === playerIdRef.current);
       const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
       const redBall = eng.marbles.find((m) => m.id === redBallIdRef.current);
-      if (cue) { cue.pos = { x: w * 0.60, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
-      if (yellow) { yellow.pos = { x: w * 0.40, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
+      if (cue) { cue.pos = { x: w * 0.58, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
+      if (yellow) { yellow.pos = { x: w * 0.42, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
       if (redBall) { redBall.pos = { x: w * 0.5, y: h * 0.3 }; redBall.vel = { x: 0, y: 0 }; }
       yellowHitRef.current = false;
       redBallHitRef.current = false;
       cushionCountRef.current = 0;
+      cushionAtFirstHitRef.current = -1;
+      cushionAtSecondHitRef.current = -1;
       setCushionCount(0);
       setBallsHit(0);
       shotActiveRef.current = false;
