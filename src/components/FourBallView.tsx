@@ -16,10 +16,8 @@ import { PhysicsEngine, Marble } from '../game/physics';
 import {
   FOURBALL_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION,
   FOURBALL_BALL_RADIUS, FOURBALL_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
-  FOURBALL_SETTLE_FRAMES,
+  FOURBALL_SETTLE_FRAMES, FOURBALL_WIN_SCORE
 } from '../game/constants';
-
-const WIN_SCORE = 20;
 
 interface Props {
   onBack: () => void;
@@ -160,12 +158,12 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
                   const next = score1Ref.current + 1;
                   score1Ref.current = next;
                   setScore1(next);
-                  if (next >= WIN_SCORE) setWinner('yellow');
+                  if (next >= FOURBALL_WIN_SCORE) setWinner('yellow');
                 } else {
                   const next = score2Ref.current + 1;
                   score2Ref.current = next;
                   setScore2(next);
-                  if (next >= WIN_SCORE) setWinner('white');
+                  if (next >= FOURBALL_WIN_SCORE) setWinner('white');
                 }
                 setLastResult('+1  Both reds!');
                 keepTurn = true;

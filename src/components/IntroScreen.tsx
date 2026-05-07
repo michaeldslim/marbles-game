@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 
-export type GameMode = 'marbles' | 'billiards' | '4ball';
+export type GameMode = 'billiards' | '4ball';
 
 interface Props {
   onSelect: (mode: GameMode) => void;
@@ -11,16 +11,6 @@ export default function IntroScreen({ onSelect }: Props): JSX.Element {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Choose Your Game</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>🔵 Marbles</Text>
-        <Text style={styles.cardDesc}>
-          Launch your red marble into a pile and knock marbles out of the boundary ring.
-        </Text>
-        <TouchableOpacity style={[styles.btn, styles.btnMarbles]} onPress={() => onSelect('marbles')}>
-          <Text style={styles.btnText}>Play Marbles</Text>
-        </TouchableOpacity>
-      </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🎱 3-Cushion Billiards</Text>
@@ -95,9 +85,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 13,
     alignItems: 'center',
-  },
-  btnMarbles: {
-    backgroundColor: '#2a9df4',
   },
   btnBilliards: {
     backgroundColor: '#2cc47a',
