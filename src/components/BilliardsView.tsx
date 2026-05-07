@@ -365,7 +365,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
       {/* Scoreboard — compact single row */}
       <View style={styles.scoreRow}>
         <View style={[styles.scoreChip, turn === 1 ? styles.activeChip : null]}>
-          <Text style={styles.chipLabel}>P1</Text>
+          <Text style={styles.chipLabel}>Player 1</Text>
           <Text style={styles.chipScore}>{score1}</Text>
         </View>
         <View style={styles.statsChip}>
@@ -376,7 +376,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
           )}
         </View>
         <View style={[styles.scoreChip, turn === 2 ? styles.activeChip : null]}>
-          <Text style={styles.chipLabel}>P2</Text>
+          <Text style={styles.chipLabel}>Player 2</Text>
           <Text style={styles.chipScore}>{score2}</Text>
         </View>
       </View>
