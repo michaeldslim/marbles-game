@@ -26,6 +26,8 @@ export class PhysicsEngine {
   friction = 0.998;
   // coefficient of restitution (bounciness) 0..1
   restitution = ENGINE_DEFAULT_RESTITUTION;
+  // called whenever two marbles collide; receives the impact speed
+  onCollision?: (impactSpeed: number) => void;
 
   constructor(width: number, height: number) {
     this.width = width;
@@ -122,6 +124,11 @@ export class PhysicsEngine {
           // record direct hit source for billiards scoring
           a.lastHitById = b.id;
           b.lastHitById = a.id;
+          // fire collision callback with impact speed
+          if (this.onCollision) {
+            const impactSpeed = Math.abs(rel);
+            this.onCollision(impactSpeed);
+          }
           // convert back to velocity vectors
           a.vel.x = va_n_after * nx + va_t * tx;
           a.vel.y = va_n_after * ny + va_t * ty;

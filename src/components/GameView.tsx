@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Slider from '@react-native-community/slider';
 import Svg, { Circle, Line, Rect, Ellipse, Polyline } from 'react-native-svg';
+import { Audio } from 'expo-av';
 import { PhysicsEngine, createTrianglePile, Marble } from '../game/physics';
 import { PLAYER_LAUNCH_SPEED, BILLIARDS_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION, PLAYER_MARBLE_RADIUS, PLAYER_MARBLE_FRICTION, SETTLE_SPEED_THRESHOLD, SETTLE_FRAMES, BILLIARDS_SETTLE_FRAMES, BILLIARDS_BALL_RADIUS, TELEPORT_DELAY_MS, BILLIARDS_BALL_FRICTION } from '../game/constants';
 
@@ -29,6 +30,28 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
   const boundaryRadiusRef = useRef<number | null>(null);
   const boundaryCenterRef = useRef<{ x: number; y: number } | null>(null);
   const settledCounterRef = useRef<number>(0);
+  const hitSoundRef = useRef<Audio.Sound | null>(null);
+
+  // Load hit sound on mount, unload on unmount
+  useEffect(() => {
+    let sound: Audio.Sound;
+    // Configure audio session first so iOS doesn't block playback
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
+      .then(() => Audio.Sound.createAsync(require('../../assets/sounds/hit_effect.mp3')))
+      .then(({ sound: s }) => {
+        sound = s;
+        hitSoundRef.current = s;
+        // Warm-up play at zero volume so first real hit has no delay
+        s.setVolumeAsync(0)
+          .then(() => s.playAsync())
+          .then(() => s.setVolumeAsync(1))
+          .catch(() => {});
+      })
+      .catch(() => {}); // silently ignore if file missing
+    return () => {
+      sound?.unloadAsync();
+    };
+  }, []);
 
   // Billiards-specific refs
   const yellowIdRef = useRef<number | null>(null);
@@ -191,10 +214,10 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     const h = eng.height;
     const r = BILLIARDS_BALL_RADIUS;
     // White cue ball (player) — lower right area
-    const cue = eng.addMarble({ pos: { x: w * 0.58, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
+    const cue = eng.addMarble({ pos: { x: w * 0.56, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
     playerIdRef.current = cue.id;
     // Yellow object ball — lower left area
-    const yellow = eng.addMarble({ pos: { x: w * 0.42, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
+    const yellow = eng.addMarble({ pos: { x: w * 0.44, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
     yellowIdRef.current = yellow.id;
     // Red object ball — upper center
     const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: BILLIARDS_BALL_FRICTION });
@@ -211,6 +234,12 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     if (!engineRef.current) {
       const eng = new PhysicsEngine(newW, boardHeight);
       eng.restitution = restitution;
+      eng.onCollision = () => {
+        const sound = hitSoundRef.current;
+        if (sound) {
+          sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
+        }
+      };
 
       if (isBilliards) {
         setupBilliards(eng);
@@ -424,8 +453,8 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
       const cue = eng.marbles.find((m) => m.id === playerIdRef.current);
       const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
       const redBall = eng.marbles.find((m) => m.id === redBallIdRef.current);
-      if (cue) { cue.pos = { x: w * 0.58, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
-      if (yellow) { yellow.pos = { x: w * 0.42, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
+      if (cue) { cue.pos = { x: w * 0.56, y: h * 0.72 }; cue.vel = { x: 0, y: 0 }; cue.wallHitCount = 0; }
+      if (yellow) { yellow.pos = { x: w * 0.44, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
       if (redBall) { redBall.pos = { x: w * 0.5, y: h * 0.3 }; redBall.vel = { x: 0, y: 0 }; }
       yellowHitRef.current = false;
       redBallHitRef.current = false;
@@ -452,6 +481,12 @@ export default function GameView({ gameMode, onBack }: Props): JSX.Element {
     setScore(0);
     const eng = new PhysicsEngine(w, engH);
     eng.restitution = restitution;
+    eng.onCollision = () => {
+      const sound = hitSoundRef.current;
+      if (sound) {
+        sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
+      }
+    };
     const pileCenterY = eng.height * 0.28 + 40;
     createTrianglePile(eng, w / 2, pileCenterY, 5);
     let cx = 0, cy = 0, count = 0;
