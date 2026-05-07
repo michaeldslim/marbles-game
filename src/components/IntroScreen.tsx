@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 
-export type GameMode = 'marbles' | 'billiards';
+export type GameMode = 'marbles' | 'billiards' | '4ball';
 
 interface Props {
   onSelect: (mode: GameMode) => void;
@@ -31,6 +31,18 @@ export default function IntroScreen({ onSelect }: Props): JSX.Element {
         </Text>
         <TouchableOpacity style={[styles.btn, styles.btnBilliards]} onPress={() => onSelect('billiards')}>
           <Text style={styles.btnText}>Play 3-Cushion</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🟡 4-Ball Billiards</Text>
+        <Text style={styles.cardDesc}>
+          Strike your cue ball to hit{' '}
+          <Text style={styles.bold}>all three</Text> object balls in a single shot to score.
+          Coming soon!
+        </Text>
+        <TouchableOpacity style={[styles.btn, styles.btn4ball]} onPress={() => onSelect('4ball')}>
+          <Text style={styles.btnText}>Play 4-Ball</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -89,6 +101,9 @@ const styles = StyleSheet.create({
   },
   btnBilliards: {
     backgroundColor: '#2cc47a',
+  },
+  btn4ball: {
+    backgroundColor: '#e8a020',
   },
   btnText: {
     color: '#fff',

@@ -28,3 +28,9 @@ export const BILLIARDS_LAUNCH_SPEED = 205;
 export const BILLIARDS_SETTLE_FRAMES = 10;
 // Billiards ball radius in pixels 14, 15, 16
 export const BILLIARDS_BALL_RADIUS = 16;
+
+// 4-Ball billiards (사구) — separate tuning
+export const FOURBALL_BALL_FRICTION = 0.987;
+export const FOURBALL_LAUNCH_SPEED = 205;
+export const FOURBALL_SETTLE_FRAMES = 10;
+export const FOURBALL_BALL_RADIUS = 14;
