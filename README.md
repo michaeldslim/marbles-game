@@ -26,6 +26,54 @@ Run on iOS (macOS + Xcode required):
 npm run ios
 ```
 
+## EAS (Expo Application Services)
+
+This project uses **EAS Build** for cloud builds and **EAS Update** for over-the-air (OTA) JS updates.
+
+### Setup
+
+```bash
+# Install EAS CLI globally
+npm install -g eas-cli
+
+# Log in to your Expo account
+eas login
+
+# Link this project to EAS (first time only)
+eas init
+```
+
+### Build
+
+```bash
+# Build for production (Android AAB + iOS IPA)
+eas build --platform android --profile production
+eas build --platform ios --profile production
+
+# Build both platforms at once
+eas build --platform all --profile production
+```
+
+> Builds run on Expo's cloud servers. When complete, a download link for the `.aab` / `.ipa` is provided.
+
+### OTA Update (JS-only changes)
+
+Use this instead of a full store release when only JavaScript/assets changed.
+
+```bash
+# Push an OTA update to production
+eas update --channel production --message "Fix bug / update description"
+```
+
+> OTA updates are only delivered to devices whose `runtimeVersion` matches. A new binary build is required when native code changes.
+
+### Channels
+
+| Profile | Channel | Purpose |
+|---|---|---|
+| `development` | `development` | Dev client builds |
+| `production` | `production` | App Store / Play Store |
+
 ---
 
 ## Game Modes / 게임 모드

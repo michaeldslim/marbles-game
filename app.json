@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Marbles Game",
-    "slug": "marbles-game",
+    "slug": "marblesgame",
     "version": "1.0.0",
     "sdkVersion": "48.0.0",
     "platforms": [
@@ -16,9 +16,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -28,6 +25,17 @@
     },
     "android": {
       "package": "com.mike008.marblesgame"
-    }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/82ba17ea-a8b3-49fb-965e-b118cf80f54e",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "82ba17ea-a8b3-49fb-965e-b118cf80f54e"
+      }
+    },
+    "owner": "mike008"
   }
 }

@@ -1,6 +1,6 @@
 {
-  "name": "marbles-game",
-  "version": "0.1.0",
+  "name": "marblesgame",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "start": "expo start --dev-client",
@@ -17,7 +17,8 @@
     "react-native": "0.71.14",
     "react-native-gesture-handler": "~2.9.0",
     "react-native-svg": "13.4.0",
-    "expo-av": "~13.2.1"
+    "expo-av": "~13.2.1",
+    "expo-updates": "~0.16.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
