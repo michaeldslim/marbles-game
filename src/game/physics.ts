@@ -1,6 +1,10 @@
 export type Vec = { x: number; y: number };
 
-import { ENGINE_DEFAULT_RESTITUTION, PILE_MARBLE_RADIUS, PILE_MARBLE_FRICTION } from './constants';
+import {
+  ENGINE_DEFAULT_RESTITUTION, PILE_MARBLE_RADIUS, PILE_MARBLE_FRICTION,
+  SPIN_TRANSFER_FACTOR, ENGLISH_FACTOR, SPIN_DECAY,
+  SPIN_COLLISION_RETAIN, SIDE_SPIN_CUSHION_RETAIN,
+} from './constants';
 
 export interface Marble {
   id: number;
@@ -16,6 +20,11 @@ export interface Marble {
   wallHitCount?: number;
   // id of the last marble that directly collided with this one
   lastHitById?: number;
+  // Shot technique spin values set at launch time.
+  // spin:     +1 = topspin (follow/밀어치기)  0 = stop shot (스톱샷)  -1 = backspin (draw/끌어치기)
+  // sideSpin: +1 = right English (오른회전)   0 = none               -1 = left English (왼회전)
+  spin?: number;
+  sideSpin?: number;
 }
 
 export class PhysicsEngine {
@@ -58,6 +67,15 @@ export class PhysicsEngine {
       const fr = Math.min(Math.max(m.friction ?? this.friction, 0), 1);
       m.vel.x *= fr;
       m.vel.y *= fr;
+      // decay spin values (rolling gradually removes spin)
+      if (m.spin) {
+        m.spin *= SPIN_DECAY;
+        if (Math.abs(m.spin) < 0.001) m.spin = 0;
+      }
+      if (m.sideSpin) {
+        m.sideSpin *= SPIN_DECAY;
+        if (Math.abs(m.sideSpin) < 0.001) m.sideSpin = 0;
+      }
     }
 
     // wall collisions (simple reflecting)
@@ -65,23 +83,45 @@ export class PhysicsEngine {
       if (m.captured) continue;
       if (m.pos.x - m.radius < 0) {
         m.pos.x = m.radius;
+        const prevVx = m.vel.x;
         m.vel.x *= -this.restitution;
+        // English: side-spin deflects tangential (vy) component off vertical cushion
+        if (m.sideSpin) {
+          m.vel.y += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVx) * Math.sign(prevVx);
+          m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
+        }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
       if (m.pos.x + m.radius > this.width) {
         m.pos.x = this.width - m.radius;
+        const prevVx = m.vel.x;
         m.vel.x *= -this.restitution;
+        if (m.sideSpin) {
+          m.vel.y += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVx) * Math.sign(prevVx);
+          m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
+        }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
       if (m.pos.y - m.radius < 0) {
         m.pos.y = m.radius;
+        const prevVy = m.vel.y;
         m.vel.y *= -this.restitution;
+        // English: side-spin deflects tangential (vx) component off horizontal cushion
+        if (m.sideSpin) {
+          m.vel.x += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVy) * Math.sign(prevVy);
+          m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
+        }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
       if (m.pos.y + m.radius > this.height) {
         // captured when fully out (simple rule: if touching bottom edge)
         m.pos.y = this.height - m.radius;
+        const prevVy = m.vel.y;
         m.vel.y *= -this.restitution;
+        if (m.sideSpin) {
+          m.vel.x += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVy) * Math.sign(prevVy);
+          m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
+        }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
       }
     }
@@ -134,6 +174,22 @@ export class PhysicsEngine {
           a.vel.y = va_n_after * ny + va_t * ty;
           b.vel.x = vb_n_after * nx + vb_t * tx;
           b.vel.y = vb_n_after * ny + vb_t * ty;
+          // Apply spin (topspin/backspin) — shifts cue ball along collision normal.
+          // Positive spin → ball continues forward (follow/밀어치기).
+          // Negative spin → ball reverses  (draw/끌어치기).
+          // Zero spin    → ball stops      (stop shot/스톱샷, natural for head-on equal-mass collision).
+          const impact = Math.abs(rel);
+          if (a.spin) {
+            a.vel.x += a.spin * impact * SPIN_TRANSFER_FACTOR * nx;
+            a.vel.y += a.spin * impact * SPIN_TRANSFER_FACTOR * ny;
+            a.spin *= SPIN_COLLISION_RETAIN;
+          }
+          if (b.spin) {
+            // b's approach direction is opposite the normal
+            b.vel.x += b.spin * impact * SPIN_TRANSFER_FACTOR * (-nx);
+            b.vel.y += b.spin * impact * SPIN_TRANSFER_FACTOR * (-ny);
+            b.spin *= SPIN_COLLISION_RETAIN;
+          }
         }
       }
     }

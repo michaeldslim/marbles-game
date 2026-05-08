@@ -61,6 +61,16 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [winner, setWinner] = useState<'yellow' | 'white' | null>(null);
 
+  // Shot technique selection
+  type SpinType    = 'draw' | 'stop' | 'follow';
+  type EnglishType = 'left' | 'none' | 'right';
+  const [shotType, setShotType]   = useState<SpinType>('stop');
+  const [english,  setEnglish]    = useState<EnglishType>('none');
+  const shotTypeRef = useRef<SpinType>('stop');
+  const englishRef  = useRef<EnglishType>('none');
+  useEffect(() => { shotTypeRef.current = shotType; }, [shotType]);
+  useEffect(() => { englishRef.current  = english;  }, [english]);
+
   // Load hit sound
   useEffect(() => {
     let sound: Audio.Sound;
@@ -252,6 +262,11 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         const vel = { x: (dx / mag) * FOURBALL_LAUNCH_SPEED * powerRef.current, y: (dy / mag) * FOURBALL_LAUNCH_SPEED * powerRef.current };
         shotActiveRef.current = true;
         setReady(false);
+        // Apply spin technique to cue ball
+        const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
+        const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
+        active.spin     = spinMap[shotTypeRef.current];
+        active.sideSpin = englishMap[englishRef.current];
         eng.launchMarble(activeCueId, vel);
         aimingRef.current = null;
       },
@@ -401,6 +416,42 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         </View>
       )}
 
+      {/* Shot technique selector */}
+      {!winner && (
+        <View style={styles.techRow}>
+          <View style={styles.techGroup}>
+            {([
+              { key: 'draw',   label: '끌어치기', sub: 'Draw' },
+              { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
+              { key: 'follow', label: '밀어치기', sub: 'Follow' },
+            ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.techBtn, shotType === key && styles.techBtnActive]}
+                onPress={() => setShotType(key)}
+              >
+                <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.techGroup}>
+            {([
+              { key: 'left',  label: '왼회전',   sub: '← Eng' },
+              { key: 'none',  label: '무회전',   sub: 'Center' },
+              { key: 'right', label: '오른회전', sub: 'Eng →' },
+            ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.techBtn, english === key && styles.techBtnEnActive]}
+                onPress={() => setEnglish(key)}
+              >
+                <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       <View style={styles.arenaWrap} {...pan.panHandlers}>
         <Svg width={size.w} height={boardH}>
           <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
@@ -417,26 +468,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', paddingTop: 2 },
   arenaWrap: { width: '100%', alignItems: 'center' },
 
-  hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  turnText: { flex: 1, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
+  turnText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   yellowTurn: { color: '#f4c430' },
   whiteTurn: { color: '#e0e0e0' },
-  shotText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
+  shotText: { flex: 1, fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
 
-  scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 },
+  scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
   scoreCard: {
-    flex: 1, alignItems: 'center', paddingVertical: 6, paddingHorizontal: 4,
-    backgroundColor: '#fff', borderRadius: 8,
-    borderWidth: 2, borderColor: 'transparent',
+    flex: 1, alignItems: 'center', paddingVertical: 1, paddingHorizontal: 4,
+    backgroundColor: '#fff', borderRadius: 5,
+    borderWidth: 1.5, borderColor: 'transparent',
   },
   activeCard: { borderColor: '#f4c430' },
-  playerLabel: { fontSize: 12, fontWeight: '600', color: '#444', marginBottom: 2 },
-  scoreNum: { fontSize: 28, fontWeight: '800', color: '#111' },
+  playerLabel: { fontSize: 8, fontWeight: '600', color: '#444', marginBottom: 0 },
+  scoreNum: { fontSize: 13, fontWeight: '800', color: '#111' },
 
-  midCol: { alignItems: 'center', minWidth: 70 },
-  redsLabel: { fontSize: 11, color: '#555', fontWeight: '600' },
-  redsNum: { fontSize: 22, fontWeight: '800', color: '#111' },
-  resultText: { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  midCol: { alignItems: 'center', minWidth: 55 },
+  redsLabel: { fontSize: 8, color: '#555', fontWeight: '600' },
+  redsNum: { fontSize: 13, fontWeight: '800', color: '#111' },
+  resultText: { fontSize: 9, fontWeight: '700', marginTop: 0 },
   hit: { color: '#2cc47a' },
   miss: { color: '#e44' },
 
@@ -448,8 +499,20 @@ const styles = StyleSheet.create({
   playAgainBtn: { backgroundColor: '#111', borderRadius: 6, paddingHorizontal: 20, paddingVertical: 8 },
   playAgainText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  restartBtn: { width: 72, height: 36, backgroundColor: '#e44', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  restartText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  backBtn: { width: 36, height: 36, backgroundColor: '#666', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  backText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  restartBtn: { width: 60, height: 26, backgroundColor: '#e44', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  restartText: { color: '#fff', fontWeight: '700', fontSize: 11 },
+  backBtn: { width: 28, height: 26, backgroundColor: '#666', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4 },
+  techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+  techBtn: {
+    flex: 1, alignItems: 'center', paddingVertical: 3, borderRadius: 6,
+    backgroundColor: '#e8e8e8', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  techBtnActive:   { backgroundColor: '#1b5e36', borderColor: '#2cc47a' },
+  techBtnEnActive: { backgroundColor: '#1a3a6b', borderColor: '#4da6ff' },
+  techLabel:      { fontSize: 11, fontWeight: '700', color: '#444' },
+  techSub:        { fontSize: 9,  fontWeight: '500', color: '#888' },
+  techLabelActive: { color: '#fff' },
 });

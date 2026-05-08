@@ -59,6 +59,16 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
   const [billiardReady, setBilliardReady] = useState<boolean>(true);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
+  // Shot technique selection
+  type SpinType    = 'draw' | 'stop' | 'follow';
+  type EnglishType = 'left' | 'none' | 'right';
+  const [shotType, setShotType]   = useState<SpinType>('stop');
+  const [english,  setEnglish]    = useState<EnglishType>('none');
+  const shotTypeRef = useRef<SpinType>('stop');
+  const englishRef  = useRef<EnglishType>('none');
+  useEffect(() => { shotTypeRef.current = shotType; }, [shotType]);
+  useEffect(() => { englishRef.current  = english;  }, [english]);
+
   useEffect(() => {
     let sound: Audio.Sound;
     Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
@@ -251,6 +261,11 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         const vel = { x: (dx / mag) * BILLIARDS_LAUNCH_SPEED * powerRef.current, y: (dy / mag) * BILLIARDS_LAUNCH_SPEED * powerRef.current };
         shotActiveRef.current = true;
         setBilliardReady(false);
+        // Apply spin technique to cue ball
+        const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
+        const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
+        player.spin    = spinMap[shotTypeRef.current];
+        player.sideSpin = englishMap[englishRef.current];
         eng.launchMarble(activeCueId, vel);
         aimingRef.current = null;
       },
@@ -381,6 +396,42 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         </View>
       </View>
 
+      {/* Shot technique selector */}
+      <View style={styles.techRow}>
+        {/* Spin row */}
+        <View style={styles.techGroup}>
+          {([
+            { key: 'draw',   label: '끌어치기', sub: 'Draw' },
+            { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
+            { key: 'follow', label: '밀어치기', sub: 'Follow' },
+          ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.techBtn, shotType === key && styles.techBtnActive]}
+              onPress={() => setShotType(key)}
+            >
+              <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {/* English row */}
+        <View style={styles.techGroup}>
+          {([
+            { key: 'left',  label: '왼회전', sub: '← Eng' },
+            { key: 'none',  label: '무회전', sub: 'Center' },
+            { key: 'right', label: '오른회전', sub: 'Eng →' },
+          ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.techBtn, english === key && styles.techBtnEnActive]}
+              onPress={() => setEnglish(key)}
+            >
+              <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       <View style={styles.arenaWrap} {...pan.panHandlers}>
         <Svg width={size.w} height={boardH}>
           <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
@@ -397,30 +448,42 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', paddingTop: 2 },
   arenaWrap: { width: '100%', alignItems: 'center' },
 
-  hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  statusText: { flex: 1, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
+  statusText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   readyText: { color: '#2cc47a' },
   shotText: { color: '#f4a020' },
 
-  scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 },
+  scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
   scoreChip: {
-    alignItems: 'center', paddingVertical: 4, paddingHorizontal: 10,
-    backgroundColor: '#fff', borderRadius: 8,
-    borderWidth: 2, borderColor: 'transparent',
+    alignItems: 'center', paddingVertical: 1, paddingHorizontal: 6,
+    backgroundColor: '#fff', borderRadius: 5,
+    borderWidth: 1.5, borderColor: 'transparent',
   },
   activeChip: { borderColor: '#2cc47a' },
-  chipLabel: { fontSize: 11, fontWeight: '600', color: '#666' },
-  chipScore: { fontSize: 22, fontWeight: '800', color: '#111' },
+  chipLabel: { fontSize: 8, fontWeight: '600', color: '#666' },
+  chipScore: { fontSize: 13, fontWeight: '800', color: '#111' },
 
   statsChip: { flex: 1, alignItems: 'center', flexDirection: 'column' },
-  statItem: { fontSize: 12, color: '#444', fontWeight: '600' },
+  statItem: { fontSize: 9, color: '#444', fontWeight: '600' },
   statVal: { fontWeight: '800', color: '#111' },
-  resultText: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  resultText: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
   hit: { color: '#2cc47a' },
   miss: { color: '#e44' },
 
-  restartBtn: { width: 72, height: 36, backgroundColor: '#e44', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  restartText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  backBtn: { width: 36, height: 36, backgroundColor: '#666', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  backText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  restartBtn: { width: 60, height: 26, backgroundColor: '#e44', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  restartText: { color: '#fff', fontWeight: '700', fontSize: 11 },
+  backBtn: { width: 28, height: 26, backgroundColor: '#666', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4 },
+  techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+  techBtn: {
+    flex: 1, alignItems: 'center', paddingVertical: 3, borderRadius: 6,
+    backgroundColor: '#e8e8e8', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  techBtnActive:   { backgroundColor: '#1b5e36', borderColor: '#2cc47a' },
+  techBtnEnActive: { backgroundColor: '#1a3a6b', borderColor: '#4da6ff' },
+  techLabel:      { fontSize: 11, fontWeight: '700', color: '#444' },
+  techSub:        { fontSize: 9,  fontWeight: '500', color: '#888' },
+  techLabelActive: { color: '#fff' },
 });
