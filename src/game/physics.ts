@@ -35,6 +35,10 @@ export class PhysicsEngine {
   friction = 0.998;
   // coefficient of restitution (bounciness) 0..1
   restitution = ENGINE_DEFAULT_RESTITUTION;
+  // spin transfer factor (draw/follow effect strength) — overridable from settings
+  spinTransferFactor = SPIN_TRANSFER_FACTOR;
+  // English factor (side-spin cushion deflection) — overridable from settings
+  englishFactor = ENGLISH_FACTOR;
   // called whenever two marbles collide; receives the impact speed
   onCollision?: (impactSpeed: number) => void;
 
@@ -87,7 +91,7 @@ export class PhysicsEngine {
         m.vel.x *= -this.restitution;
         // English: side-spin deflects tangential (vy) component off vertical cushion
         if (m.sideSpin) {
-          m.vel.y += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVx) * Math.sign(prevVx);
+          m.vel.y += m.sideSpin * this.englishFactor * Math.abs(prevVx) * Math.sign(prevVx);
           m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
         }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
@@ -97,7 +101,7 @@ export class PhysicsEngine {
         const prevVx = m.vel.x;
         m.vel.x *= -this.restitution;
         if (m.sideSpin) {
-          m.vel.y += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVx) * Math.sign(prevVx);
+          m.vel.y += m.sideSpin * this.englishFactor * Math.abs(prevVx) * Math.sign(prevVx);
           m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
         }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
@@ -108,7 +112,7 @@ export class PhysicsEngine {
         m.vel.y *= -this.restitution;
         // English: side-spin deflects tangential (vx) component off horizontal cushion
         if (m.sideSpin) {
-          m.vel.x += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVy) * Math.sign(prevVy);
+          m.vel.x += m.sideSpin * this.englishFactor * Math.abs(prevVy) * Math.sign(prevVy);
           m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
         }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
@@ -119,7 +123,7 @@ export class PhysicsEngine {
         const prevVy = m.vel.y;
         m.vel.y *= -this.restitution;
         if (m.sideSpin) {
-          m.vel.x += m.sideSpin * ENGLISH_FACTOR * Math.abs(prevVy) * Math.sign(prevVy);
+          m.vel.x += m.sideSpin * this.englishFactor * Math.abs(prevVy) * Math.sign(prevVy);
           m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
         }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
@@ -180,14 +184,14 @@ export class PhysicsEngine {
           // Zero spin    → ball stops      (stop shot/스톱샷, natural for head-on equal-mass collision).
           const impact = Math.abs(rel);
           if (a.spin) {
-            a.vel.x += a.spin * impact * SPIN_TRANSFER_FACTOR * nx;
-            a.vel.y += a.spin * impact * SPIN_TRANSFER_FACTOR * ny;
+            a.vel.x += a.spin * impact * this.spinTransferFactor * nx;
+            a.vel.y += a.spin * impact * this.spinTransferFactor * ny;
             a.spin *= SPIN_COLLISION_RETAIN;
           }
           if (b.spin) {
             // b's approach direction is opposite the normal
-            b.vel.x += b.spin * impact * SPIN_TRANSFER_FACTOR * (-nx);
-            b.vel.y += b.spin * impact * SPIN_TRANSFER_FACTOR * (-ny);
+            b.vel.x += b.spin * impact * this.spinTransferFactor * (-nx);
+            b.vel.y += b.spin * impact * this.spinTransferFactor * (-ny);
             b.spin *= SPIN_COLLISION_RETAIN;
           }
         }

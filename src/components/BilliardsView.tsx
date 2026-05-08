@@ -18,12 +18,15 @@ import {
   BILLIARDS_BALL_RADIUS, BILLIARDS_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
   BILLIARDS_SETTLE_FRAMES,
 } from '../game/constants';
+import { useSettings } from '../context/SettingsContext';
 
 interface Props {
   onBack: () => void;
 }
 
 export default function BilliardsView({ onBack }: Props): JSX.Element {
+  const { settings } = useSettings();
+  const s = settings; // shorthand
   const [size, setSize] = useState({ w: 360, h: 640 });
   const [marbles, setMarbles] = useState<Marble[]>([]);
   const [score1, setScore1] = useState<number>(0);
@@ -88,12 +91,12 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
   const setupBilliards = (eng: PhysicsEngine) => {
     const w = eng.width;
     const h = eng.height;
-    const r = BILLIARDS_BALL_RADIUS;
-    const cue = eng.addMarble({ pos: { x: w * 0.56, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: BILLIARDS_BALL_FRICTION });
+    const r = s.ballRadius3C;
+    const cue = eng.addMarble({ pos: { x: w * 0.56, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: s.friction3C });
     playerIdRef.current = cue.id;
-    const yellow = eng.addMarble({ pos: { x: w * 0.44, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: BILLIARDS_BALL_FRICTION });
+    const yellow = eng.addMarble({ pos: { x: w * 0.44, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: s.friction3C });
     yellowIdRef.current = yellow.id;
-    const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: BILLIARDS_BALL_FRICTION });
+    const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: s.friction3C });
     redBallIdRef.current = redBall.id;
   };
 
@@ -218,7 +221,9 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     const boardHeight = newH - 140;
     if (!engineRef.current) {
       const eng = new PhysicsEngine(newW, boardHeight);
-      eng.restitution = ENGINE_DEFAULT_RESTITUTION;
+      eng.restitution = s.restitution;
+      eng.spinTransferFactor = s.spinTransfer;
+      eng.englishFactor = s.englishFactor;
       eng.onCollision = () => {
         const sound = hitSoundRef.current;
         if (sound) sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
@@ -258,7 +263,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         const dx = (aim.x || aim.startX) - player.pos.x;
         const dy = (aim.y || aim.startY) - player.pos.y;
         const mag = Math.hypot(dx, dy) || 1;
-        const vel = { x: (dx / mag) * BILLIARDS_LAUNCH_SPEED * powerRef.current, y: (dy / mag) * BILLIARDS_LAUNCH_SPEED * powerRef.current };
+        const vel = { x: (dx / mag) * s.launchSpeed3C * powerRef.current, y: (dy / mag) * s.launchSpeed3C * powerRef.current };
         shotActiveRef.current = true;
         setBilliardReady(false);
         // Apply spin technique to cue ball
@@ -309,8 +314,8 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     const mag = Math.hypot(dx, dy) || 1;
     let px = player ? player.pos.x : aim.startX;
     let py = player ? player.pos.y : aim.startY;
-    let vx = (dx / mag) * BILLIARDS_LAUNCH_SPEED * powerRef.current;
-    let vy = (dy / mag) * BILLIARDS_LAUNCH_SPEED * powerRef.current;
+    let vx = (dx / mag) * s.launchSpeed3C * powerRef.current;
+    let vy = (dy / mag) * s.launchSpeed3C * powerRef.current;
     const r  = player ? player.radius : 0;
     const fr = player?.friction ?? eng.friction;
     const e  = eng.restitution;

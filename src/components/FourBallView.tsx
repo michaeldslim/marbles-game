@@ -18,12 +18,15 @@ import {
   FOURBALL_BALL_RADIUS, FOURBALL_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
   FOURBALL_SETTLE_FRAMES, FOURBALL_WIN_SCORE
 } from '../game/constants';
+import { useSettings } from '../context/SettingsContext';
 
 interface Props {
   onBack: () => void;
 }
 
 export default function FourBallView({ onBack }: Props): JSX.Element {
+  const { settings } = useSettings();
+  const s = settings; // shorthand
   const [size, setSize] = useState({ w: 360, h: 640 });
   const [marbles, setMarbles] = useState<Marble[]>([]);
 
@@ -94,16 +97,16 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     const w = eng.width;
     const h = eng.height;
     // White — top centre
-    const white = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.18 }, vel: { x: 0, y: 0 }, radius: FOURBALL_BALL_RADIUS, color: '#f0f0f0', friction: FOURBALL_BALL_FRICTION });
+    const white = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.18 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#f0f0f0', friction: s.friction4B });
     playerIdRef.current = white.id;
     // Red 1 — just below white
-    const red1 = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.34 }, vel: { x: 0, y: 0 }, radius: FOURBALL_BALL_RADIUS, color: '#cc2200', friction: FOURBALL_BALL_FRICTION });
+    const red1 = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.34 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#cc2200', friction: s.friction4B });
     red1IdRef.current = red1.id;
     // Red 2 — lower left
-    const red2 = eng.addMarble({ pos: { x: w * 0.42, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: FOURBALL_BALL_RADIUS, color: '#cc2200', friction: FOURBALL_BALL_FRICTION });
+    const red2 = eng.addMarble({ pos: { x: w * 0.42, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#cc2200', friction: s.friction4B });
     red2IdRef.current = red2.id;
     // Yellow — lower right
-    const yellow = eng.addMarble({ pos: { x: w * 0.58, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: FOURBALL_BALL_RADIUS, color: '#f4c430', friction: FOURBALL_BALL_FRICTION });
+    const yellow = eng.addMarble({ pos: { x: w * 0.58, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#f4c430', friction: s.friction4B });
     yellowIdRef.current = yellow.id;
   };
 
@@ -218,7 +221,9 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     const boardHeight = newH - 140;
     if (!engineRef.current) {
       const eng = new PhysicsEngine(newW, boardHeight);
-      eng.restitution = ENGINE_DEFAULT_RESTITUTION;
+      eng.restitution = s.restitution;
+      eng.spinTransferFactor = s.spinTransfer;
+      eng.englishFactor = s.englishFactor;
       eng.onCollision = () => {
         const sound = hitSoundRef.current;
         if (sound) sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
@@ -259,7 +264,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         const dx = (aim.x || aim.startX) - active.pos.x;
         const dy = (aim.y || aim.startY) - active.pos.y;
         const mag = Math.hypot(dx, dy) || 1;
-        const vel = { x: (dx / mag) * FOURBALL_LAUNCH_SPEED * powerRef.current, y: (dy / mag) * FOURBALL_LAUNCH_SPEED * powerRef.current };
+        const vel = { x: (dx / mag) * s.launchSpeed4B * powerRef.current, y: (dy / mag) * s.launchSpeed4B * powerRef.current };
         shotActiveRef.current = true;
         setReady(false);
         // Apply spin technique to cue ball
@@ -311,8 +316,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     const active = eng.marbles.find((m) => m.id === activeCueId);
     let px = active ? active.pos.x : aim.startX;
     let py = active ? active.pos.y : aim.startY;
-    let vx = (dx / mag) * FOURBALL_LAUNCH_SPEED * powerRef.current;
-    let vy = (dy / mag) * FOURBALL_LAUNCH_SPEED * powerRef.current;
+    let vx = (dx / mag) * s.launchSpeed4B * powerRef.current;
+    let vy = (dy / mag) * s.launchSpeed4B * powerRef.current;
     const r = active ? active.radius : 0;
     const fr = active?.friction ?? eng.friction;
     const e = eng.restitution;

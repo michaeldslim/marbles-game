@@ -5,12 +5,18 @@ export type GameMode = 'billiards' | '4ball';
 
 interface Props {
   onSelect: (mode: GameMode) => void;
+  onSettings: () => void;
 }
 
-export default function IntroScreen({ onSelect }: Props): JSX.Element {
+export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Element {
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Choose Your Game</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Choose Your Game</Text>
+        <TouchableOpacity style={styles.settingsBtn} onPress={onSettings}>
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🎱 3-Cushion Billiards</Text>
@@ -47,12 +53,22 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: '#f7f7f7',
   },
+  titleRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: 28, width: '100%',
+  },
   title: {
-    fontSize: 26,
+    flex: 1,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 28,
     color: '#222',
   },
+  settingsBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#e8e8e8',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  settingsIcon: { fontSize: 20 },
   card: {
     width: '100%',
     backgroundColor: '#fff',
