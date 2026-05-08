@@ -475,8 +475,8 @@ const styles = StyleSheet.create({
 
   hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
   turnText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  yellowTurn: { color: '#f4c430' },
-  whiteTurn: { color: '#e0e0e0' },
+  yellowTurn: { color: '#2cc47a' },
+  whiteTurn: { color: '#2cc47a' },
   shotText: { flex: 1, fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
 
   scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   playerLabel: { fontSize: 8, fontWeight: '600', color: '#444', marginBottom: 0 },
   scoreNum: { fontSize: 13, fontWeight: '800', color: '#111' },
 
-  midCol: { alignItems: 'center', minWidth: 55 },
+  midCol: { flex: 1, alignItems: 'center' },
   redsLabel: { fontSize: 8, color: '#555', fontWeight: '600' },
   redsNum: { fontSize: 13, fontWeight: '800', color: '#111' },
   resultText: { fontSize: 9, fontWeight: '700', marginTop: 0 },

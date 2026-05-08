@@ -377,9 +377,13 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         <TouchableOpacity style={styles.restartBtn} onPress={restart}>
           <Text style={styles.restartText}>Restart</Text>
         </TouchableOpacity>
-        <Text style={[styles.statusText, billiardReady ? styles.readyText : styles.shotText]}>
-          {billiardReady ? (isBreakRef.current ? 'Break – hit red first' : 'Ready!') : 'Shot…'}
-        </Text>
+        {billiardReady ? (
+          <Text style={styles.turnText}>
+            {turn === 1 ? '⚪ Player 1' : '🟡 Player 2'}'s turn
+          </Text>
+        ) : (
+          <Text style={styles.shotText}>Shot…</Text>
+        )}
       </View>
 
       {/* Scoreboard — compact single row */}
@@ -455,12 +459,13 @@ const styles = StyleSheet.create({
 
   hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
   statusText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  turnText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center', color: '#2cc47a' },
   readyText: { color: '#2cc47a' },
   shotText: { color: '#f4a020' },
 
   scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
   scoreChip: {
-    alignItems: 'center', paddingVertical: 1, paddingHorizontal: 6,
+    flex: 1, alignItems: 'center', paddingVertical: 1, paddingHorizontal: 6,
     backgroundColor: '#fff', borderRadius: 5,
     borderWidth: 1.5, borderColor: 'transparent',
   },
@@ -469,7 +474,7 @@ const styles = StyleSheet.create({
   chipScore: { fontSize: 13, fontWeight: '800', color: '#111' },
 
   statsChip: { flex: 1, alignItems: 'center', flexDirection: 'column' },
-  statItem: { fontSize: 9, color: '#444', fontWeight: '600' },
+  statItem: { fontSize: 8, color: '#444', fontWeight: '600' },
   statVal: { fontWeight: '800', color: '#111' },
   resultText: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
   hit: { color: '#2cc47a' },
