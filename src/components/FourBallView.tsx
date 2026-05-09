@@ -210,6 +210,11 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
                 const nextTurn = turnRef.current === 'yellow' ? 'white' : 'yellow';
                 turnRef.current = nextTurn;
                 setTurn(nextTurn);
+                // Reset tech buttons for the new player
+                shotTypeRef.current = 'stop';
+                englishRef.current  = 'none';
+                setShotType('stop');
+                setEnglish('none');
               }
               setReady(true);
             }
@@ -413,6 +418,10 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     setScore2(0);
     turnRef.current = 'yellow';
     setTurn('yellow');
+    shotTypeRef.current = 'stop';
+    englishRef.current  = 'none';
+    setShotType('stop');
+    setEnglish('none');
     setReady(true);
     readyRef.current = true;
     chargingRef.current = false;

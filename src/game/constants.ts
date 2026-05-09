@@ -21,7 +21,7 @@ export const BILLIARDS_SETTLE_FRAMES = 10;
 export const BILLIARDS_BALL_RADIUS = 14;
 
 // 4-Ball billiards (사구) — separate tuning
-export const FOURBALL_BALL_FRICTION = 0.987;
+export const FOURBALL_BALL_FRICTION = 0.991;
 export const FOURBALL_LAUNCH_SPEED = 205;
 export const FOURBALL_SETTLE_FRAMES = 10;
 export const FOURBALL_BALL_RADIUS = 14;
@@ -46,4 +46,4 @@ export const SPIN_COLLISION_RETAIN = 0.25;
 export const SIDE_SPIN_CUSHION_RETAIN = 0.6;
 // Linear deceleration (px/s²) applied at all speeds to make balls stop sooner.
 // At high speeds this is negligible vs multiplicative friction; at low speeds it dominates.
-export const STOP_DRAG = 8;
+export const STOP_DRAG = 5;

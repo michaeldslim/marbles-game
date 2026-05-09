@@ -127,7 +127,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           label="3-Cushion Ball Friction"
           labelKo="3쿠션 마찰"
           value={settings.friction3C}
-          min={0.97} max={0.9999} step={0.001}
+          min={0.97} max={0.9999} step={0.0005}
           format={(v) => v.toFixed(4)}
           onValueChange={(v) => updateSetting('friction3C', v)}
           desc={{
@@ -139,7 +139,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           label="4-Ball Ball Friction"
           labelKo="사구 마찰"
           value={settings.friction4B}
-          min={0.97} max={0.9999} step={0.001}
+          min={0.97} max={0.9999} step={0.0005}
           format={(v) => v.toFixed(4)}
           onValueChange={(v) => updateSetting('friction4B', v)}
           desc={{
@@ -235,7 +235,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           label="Stop Drag"
           labelKo="정지 감속"
           value={settings.stopDrag}
-          min={0} max={30} step={1}
+          min={0} max={10} step={1}
           format={(v) => `${v} px/s²`}
           onValueChange={(v) => updateSetting('stopDrag', v)}
           desc={{

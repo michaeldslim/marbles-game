@@ -197,6 +197,11 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
                 const next: 1 | 2 = turnRef.current === 1 ? 2 : 1;
                 turnRef.current = next;
                 setTurn(next);
+                // Reset tech buttons for the new player
+                shotTypeRef.current = 'stop';
+                englishRef.current  = 'none';
+                setShotType('stop');
+                setEnglish('none');
               }
 
               // Reset shot tracking
@@ -408,6 +413,10 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     score1Ref.current = 0;
     score2Ref.current = 0;
     turnRef.current = 1;
+    shotTypeRef.current = 'stop';
+    englishRef.current  = 'none';
+    setShotType('stop');
+    setEnglish('none');
     setCushionCount(0);
     setBallsHit(0);
     setScore1(0);
