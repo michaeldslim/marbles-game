@@ -187,6 +187,18 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
             ko: '사구에서 최대 파워 발사 시 기본 속도.',
           }}
         />
+        <SettingRow
+          label="Power Meter Speed"
+          labelKo="파워 미터 속도"
+          value={settings.chargeCyclesPerSec}
+          min={0.3} max={2.0} step={0.1}
+          format={(v) => `${v.toFixed(1)} /s`}
+          onValueChange={(v) => updateSetting('chargeCyclesPerSec', v)}
+          desc={{
+            en: 'How fast the power bar oscillates when aiming. Lower = easier to control.',
+            ko: '조준 중 파워 바가 왕복하는 속도. 낮을수록 컨트롤이 쉽습니다.',
+          }}
+        />
 
         {/* ── Spin ────────────────────────────────────── */}
         <Text style={styles.section}>Spin  스핀</Text>
@@ -213,6 +225,22 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           desc={{
             en: 'How strongly left/right English (side spin) deflects the cue ball off a cushion. Higher = more curve after cushion contact.',
             ko: '왼쪽/오른쪽 회전이 쿠션에서 공 방향을 바꾸는 강도. 높을수록 쿠션 후 더 많이 꺾입니다.',
+          }}
+        />
+
+        {/* ── Stopping ─────────────────────────────────── */}
+        <Text style={styles.section}>Stopping  정지</Text>
+
+        <SettingRow
+          label="Stop Drag"
+          labelKo="정지 감속"
+          value={settings.stopDrag}
+          min={0} max={30} step={1}
+          format={(v) => `${v} px/s²`}
+          onValueChange={(v) => updateSetting('stopDrag', v)}
+          desc={{
+            en: 'Extra linear deceleration applied at all speeds. Higher = balls stop sooner. Does not affect initial shot feel.',
+            ko: '모든 속도에서 추가로 적용되는 선형 감속. 높을수록 공이 더 빨리 멈춥니다. 초기 발사 느낌에는 영향이 없습니다.',
           }}
         />
 

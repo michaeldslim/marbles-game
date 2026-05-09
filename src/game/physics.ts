@@ -3,7 +3,7 @@ export type Vec = { x: number; y: number };
 import {
   ENGINE_DEFAULT_RESTITUTION, PILE_MARBLE_RADIUS, PILE_MARBLE_FRICTION,
   SPIN_TRANSFER_FACTOR, ENGLISH_FACTOR, SPIN_DECAY,
-  SPIN_COLLISION_RETAIN, SIDE_SPIN_CUSHION_RETAIN,
+  SPIN_COLLISION_RETAIN, SIDE_SPIN_CUSHION_RETAIN, STOP_DRAG,
 } from './constants';
 
 export interface Marble {
@@ -41,6 +41,8 @@ export class PhysicsEngine {
   englishFactor = ENGLISH_FACTOR;
   // called whenever two marbles collide; receives the impact speed
   onCollision?: (impactSpeed: number) => void;
+  // linear deceleration (px/s²) applied every step to help balls stop sooner
+  stopDrag = STOP_DRAG;
 
   constructor(width: number, height: number) {
     this.width = width;
@@ -71,6 +73,13 @@ export class PhysicsEngine {
       const fr = Math.min(Math.max(m.friction ?? this.friction, 0), 1);
       m.vel.x *= fr;
       m.vel.y *= fr;
+      // apply linear drag to make balls stop sooner at low speeds
+      const speed = Math.hypot(m.vel.x, m.vel.y);
+      if (speed > 0) {
+        const drag = Math.min(this.stopDrag * dt, speed);
+        m.vel.x -= (m.vel.x / speed) * drag;
+        m.vel.y -= (m.vel.y / speed) * drag;
+      }
       // decay spin values (rolling gradually removes spin)
       if (m.spin) {
         m.spin *= SPIN_DECAY;

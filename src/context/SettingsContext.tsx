@@ -10,6 +10,8 @@ import {
   DEFAULT_PLAYER_POWER,
   SPIN_TRANSFER_FACTOR,
   ENGLISH_FACTOR,
+  DEFAULT_CHARGE_CYCLES_PER_SEC,
+  STOP_DRAG,
 } from '../game/constants';
 
 export interface Settings {
@@ -26,10 +28,14 @@ export interface Settings {
   launchSpeed3C: number;      // 3-Cushion launch speed
   launchSpeed4B: number;      // 4-Ball launch speed
   playerPower: number;        // Power multiplier / 파워 배율
+  chargeCyclesPerSec: number; // Power meter oscillation speed
 
   // Spin / 스핀
   spinTransfer: number;       // Draw/Follow spin transfer factor
   englishFactor: number;      // Side-spin English factor
+
+  // Stopping / 정지
+  stopDrag: number;           // Linear deceleration to help balls stop sooner
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,8 +47,10 @@ export const DEFAULT_SETTINGS: Settings = {
   launchSpeed3C: BILLIARDS_LAUNCH_SPEED,
   launchSpeed4B: FOURBALL_LAUNCH_SPEED,
   playerPower:   DEFAULT_PLAYER_POWER,
+  chargeCyclesPerSec: DEFAULT_CHARGE_CYCLES_PER_SEC,
   spinTransfer:  SPIN_TRANSFER_FACTOR,
   englishFactor: ENGLISH_FACTOR,
+  stopDrag:      STOP_DRAG,
 };
 
 interface SettingsContextValue {
