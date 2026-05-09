@@ -46,4 +46,4 @@ export const SPIN_COLLISION_RETAIN = 0.25;
 export const SIDE_SPIN_CUSHION_RETAIN = 0.6;
 // Linear deceleration (px/s²) applied at all speeds to make balls stop sooner.
 // At high speeds this is negligible vs multiplicative friction; at low speeds it dominates.
-export const STOP_DRAG = 10;
+export const STOP_DRAG = 8;
