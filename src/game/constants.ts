@@ -1,5 +1,7 @@
 // Default player power exposed in the UI
 export const DEFAULT_PLAYER_POWER = 4.5;
+// Default power meter oscillation speed (cycles per second)
+export const DEFAULT_CHARGE_CYCLES_PER_SEC = 0.8;
 
 // Physics engine defaults
 export const ENGINE_DEFAULT_RESTITUTION = 0.8;
@@ -42,3 +44,6 @@ export const SPIN_DECAY = 0.975;
 export const SPIN_COLLISION_RETAIN = 0.25;
 // Fraction of sideSpin remaining after a cushion bounce.
 export const SIDE_SPIN_CUSHION_RETAIN = 0.6;
+// Linear deceleration (px/s²) applied at all speeds to make balls stop sooner.
+// At high speeds this is negligible vs multiplicative friction; at low speeds it dominates.
+export const STOP_DRAG = 10;

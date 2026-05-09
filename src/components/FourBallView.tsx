@@ -74,6 +74,16 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
   useEffect(() => { shotTypeRef.current = shotType; }, [shotType]);
   useEffect(() => { englishRef.current  = english;  }, [english]);
 
+  // Two-step power charging
+  const readyRef = useRef<boolean>(true);
+  useEffect(() => { readyRef.current = ready; }, [ready]);
+  const [charging, setCharging] = useState<boolean>(false);
+  const chargingRef = useRef<boolean>(false);
+  const [chargePower, setChargePower] = useState<number>(0);
+  const chargePowerRef = useRef<number>(0);
+  const chargeStartTimeRef = useRef<number>(0);
+  const chargeDirectionRef = useRef<{ dx: number; dy: number; mag: number } | null>(null);
+
   // Load hit sound
   useEffect(() => {
     let sound: Audio.Sound;
@@ -205,6 +215,15 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
             }
           }
         }
+        // Oscillate charge power
+        if (chargingRef.current) {
+          const elapsed = (Date.now() - chargeStartTimeRef.current) / 1000;
+          const t = (elapsed * s.chargeCyclesPerSec) % 2;
+          const raw = t <= 1 ? t : 2 - t;
+          const p = 0.1 + 0.9 * raw;
+          chargePowerRef.current = p;
+          setChargePower(p);
+        }
         setMarbles([...eng.marbles]);
       }
       rafId = requestAnimationFrame(tick);
@@ -224,6 +243,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
+      eng.stopDrag = s.stopDrag;
       eng.onCollision = () => {
         const sound = hitSoundRef.current;
         if (sound) sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
@@ -241,6 +261,32 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
+        // During charging: this tap fires the ball at current power
+        if (chargingRef.current) {
+          const eng = engineRef.current;
+          const activeCueId = turnRef.current === 'yellow' ? yellowIdRef.current : playerIdRef.current;
+          const dir = chargeDirectionRef.current;
+          if (!eng || activeCueId == null || !dir) return;
+          const active = eng.marbles.find((m) => m.id === activeCueId);
+          if (!active) return;
+          const speed = s.launchSpeed4B * powerRef.current * chargePowerRef.current;
+          const vel = { x: (dir.dx / dir.mag) * speed, y: (dir.dy / dir.mag) * speed };
+          const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
+          const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
+          active.spin     = spinMap[shotTypeRef.current];
+          active.sideSpin = englishMap[englishRef.current];
+          eng.launchMarble(activeCueId, vel);
+          shotActiveRef.current = true;
+          setReady(false);
+          readyRef.current = false;
+          chargingRef.current = false;
+          setCharging(false);
+          chargePowerRef.current = 0;
+          setChargePower(0);
+          chargeDirectionRef.current = null;
+          return;
+        }
+        // Normal aim setup
         const eng = engineRef.current;
         const activeCueId = turnRef.current === 'yellow' ? yellowIdRef.current : playerIdRef.current;
         const active = eng && activeCueId != null ? eng.marbles.find((m) => m.id === activeCueId) : null;
@@ -254,25 +300,22 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         aimingRef.current.y = evt.nativeEvent.locationY;
       },
       onPanResponderRelease: () => {
+        if (chargingRef.current) return;
         const aim = aimingRef.current;
         const eng = engineRef.current;
-        if (!aim || !eng || !ready || winner) { aimingRef.current = null; return; }
+        if (!aim || !eng || !readyRef.current || winner) { aimingRef.current = null; return; }
         const activeCueId = turnRef.current === 'yellow' ? yellowIdRef.current : playerIdRef.current;
         if (activeCueId == null) { aimingRef.current = null; return; }
         const active = eng.marbles.find((m) => m.id === activeCueId);
         if (!active) { aimingRef.current = null; return; }
         const dx = (aim.x || aim.startX) - active.pos.x;
         const dy = (aim.y || aim.startY) - active.pos.y;
-        const mag = Math.hypot(dx, dy) || 1;
-        const vel = { x: (dx / mag) * s.launchSpeed4B * powerRef.current, y: (dy / mag) * s.launchSpeed4B * powerRef.current };
-        shotActiveRef.current = true;
-        setReady(false);
-        // Apply spin technique to cue ball
-        const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
-        const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
-        active.spin     = spinMap[shotTypeRef.current];
-        active.sideSpin = englishMap[englishRef.current];
-        eng.launchMarble(activeCueId, vel);
+        const dist = Math.hypot(dx, dy);
+        if (dist < 5) { aimingRef.current = null; return; }
+        chargeDirectionRef.current = { dx, dy, mag: dist };
+        chargingRef.current = true;
+        setCharging(true);
+        chargeStartTimeRef.current = Date.now();
         aimingRef.current = null;
       },
     })
@@ -307,17 +350,28 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
   const renderTrajectory = () => {
     const aim = aimingRef.current;
     const eng = engineRef.current;
-    if (!aim || !eng || !ready || winner) return null;
+    if (!eng || winner) return null;
+    if (!aim && !charging) return null;
     const activeCueId = turnRef.current === 'yellow' ? yellowIdRef.current : playerIdRef.current;
     if (activeCueId == null) return null;
-    const dx = (aim.x || aim.startX) - aim.startX;
-    const dy = (aim.y || aim.startY) - aim.startY;
-    const mag = Math.hypot(dx, dy) || 1;
     const active = eng.marbles.find((m) => m.id === activeCueId);
-    let px = active ? active.pos.x : aim.startX;
-    let py = active ? active.pos.y : aim.startY;
-    let vx = (dx / mag) * s.launchSpeed4B * powerRef.current;
-    let vy = (dy / mag) * s.launchSpeed4B * powerRef.current;
+    let dx: number, dy: number, mag: number;
+    if (charging && chargeDirectionRef.current) {
+      ({ dx, dy, mag } = chargeDirectionRef.current);
+    } else if (aim) {
+      dx = (aim.x || aim.startX) - aim.startX;
+      dy = (aim.y || aim.startY) - aim.startY;
+      mag = Math.hypot(dx, dy) || 1;
+    } else {
+      return null;
+    }
+    let px = active ? active.pos.x : (aim ? aim.startX : 0);
+    let py = active ? active.pos.y : (aim ? aim.startY : 0);
+    const effectiveSpeed = charging
+      ? s.launchSpeed4B * powerRef.current * chargePowerRef.current
+      : s.launchSpeed4B * powerRef.current;
+    let vx = (dx / mag) * effectiveSpeed;
+    let vy = (dy / mag) * effectiveSpeed;
     const r = active ? active.radius : 0;
     const fr = active?.friction ?? eng.friction;
     const e = eng.restitution;
@@ -360,6 +414,12 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     turnRef.current = 'yellow';
     setTurn('yellow');
     setReady(true);
+    readyRef.current = true;
+    chargingRef.current = false;
+    setCharging(false);
+    chargePowerRef.current = 0;
+    setChargePower(0);
+    chargeDirectionRef.current = null;
     setLastResult(null);
     setWinner(null);
     setMarbles([...eng.marbles]);
@@ -421,39 +481,54 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         </View>
       )}
 
-      {/* Shot technique selector */}
+      {/* Shot technique selector / Power charge meter — same fixed slot */}
       {!winner && (
         <View style={styles.techRow}>
-          <View style={styles.techGroup}>
-            {([
-              { key: 'draw',   label: '끌어치기', sub: 'Draw' },
-              { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
-              { key: 'follow', label: '밀어치기', sub: 'Follow' },
-            ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
-              <TouchableOpacity
-                key={key}
-                style={[styles.techBtn, shotType === key && styles.techBtnActive]}
-                onPress={() => setShotType(key)}
-              >
-                <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.techGroup}>
-            {([
-              { key: 'left',  label: '왼회전',   sub: '← Eng' },
-              { key: 'none',  label: '무회전',   sub: 'Center' },
-              { key: 'right', label: '오른회전', sub: 'Eng →' },
-            ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
-              <TouchableOpacity
-                key={key}
-                style={[styles.techBtn, english === key && styles.techBtnEnActive]}
-                onPress={() => setEnglish(key)}
-              >
-                <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {charging ? (
+            <View style={styles.powerMeterInner}>
+              <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
+              <View style={styles.powerMeterTrack}>
+                <View style={[styles.powerMeterFill, {
+                  width: `${Math.round(chargePower * 100)}%` as any,
+                  backgroundColor: chargePower > 0.7 ? '#e44' : chargePower > 0.4 ? '#f4a020' : '#2cc47a',
+                }]} />
+              </View>
+              <Text style={styles.powerMeterPct}>{Math.round(chargePower * 100)}%</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.techGroup}>
+                {([
+                  { key: 'draw',   label: '끌어치기', sub: 'Draw' },
+                  { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
+                  { key: 'follow', label: '밀어치기', sub: 'Follow' },
+                ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.techBtn, shotType === key && styles.techBtnActive]}
+                    onPress={() => setShotType(key)}
+                  >
+                    <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.techGroup}>
+                {([
+                  { key: 'left',  label: '왼회전',   sub: '← Eng' },
+                  { key: 'none',  label: '무회전',   sub: 'Center' },
+                  { key: 'right', label: '오른회전', sub: 'Eng →' },
+                ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.techBtn, english === key && styles.techBtnEnActive]}
+                    onPress={() => setEnglish(key)}
+                  >
+                    <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
         </View>
       )}
 
@@ -509,7 +584,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 28, height: 26, backgroundColor: '#666', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   backText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4 },
+  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4, height: 58 },
   techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
   techBtn: {
     flex: 1, alignItems: 'center', paddingVertical: 3, borderRadius: 6,
@@ -520,4 +595,10 @@ const styles = StyleSheet.create({
   techLabel:      { fontSize: 11, fontWeight: '700', color: '#444' },
   techSub:        { fontSize: 9,  fontWeight: '500', color: '#888' },
   techLabelActive: { color: '#fff' },
+
+  powerMeterInner: { width: '100%', alignItems: 'center', justifyContent: 'center', flex: 1 },
+  powerMeterLabel: { fontSize: 11, fontWeight: '800', color: '#fff', marginBottom: 3, letterSpacing: 1 },
+  powerMeterTrack: { width: '100%', height: 14, backgroundColor: '#333', borderRadius: 7, overflow: 'hidden' },
+  powerMeterFill: { height: '100%', borderRadius: 7 },
+  powerMeterPct: { fontSize: 10, fontWeight: '700', color: '#fff', marginTop: 2 },
 });

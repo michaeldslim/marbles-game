@@ -72,6 +72,16 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
   useEffect(() => { shotTypeRef.current = shotType; }, [shotType]);
   useEffect(() => { englishRef.current  = english;  }, [english]);
 
+  // Two-step power charging
+  const billiardReadyRef = useRef<boolean>(true);
+  useEffect(() => { billiardReadyRef.current = billiardReady; }, [billiardReady]);
+  const [charging, setCharging] = useState<boolean>(false);
+  const chargingRef = useRef<boolean>(false);
+  const [chargePower, setChargePower] = useState<number>(0);
+  const chargePowerRef = useRef<number>(0);
+  const chargeStartTimeRef = useRef<number>(0);
+  const chargeDirectionRef = useRef<{ dx: number; dy: number; mag: number } | null>(null);
+
   useEffect(() => {
     let sound: Audio.Sound;
     Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
@@ -205,6 +215,15 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
             }
           }
         }
+        // Oscillate charge power
+        if (chargingRef.current) {
+          const elapsed = (Date.now() - chargeStartTimeRef.current) / 1000;
+          const t = (elapsed * s.chargeCyclesPerSec) % 2;
+          const raw = t <= 1 ? t : 2 - t;
+          const p = 0.1 + 0.9 * raw;
+          chargePowerRef.current = p;
+          setChargePower(p);
+        }
         setMarbles([...eng.marbles]);
       }
       rafId = requestAnimationFrame(tick);
@@ -224,6 +243,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
+      eng.stopDrag = s.stopDrag;
       eng.onCollision = () => {
         const sound = hitSoundRef.current;
         if (sound) sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
@@ -241,6 +261,32 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
+        // During charging: this tap fires the ball at current power
+        if (chargingRef.current) {
+          const eng = engineRef.current;
+          const activeCueId = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
+          const dir = chargeDirectionRef.current;
+          if (!eng || activeCueId == null || !dir) return;
+          const player = eng.marbles.find((m) => m.id === activeCueId);
+          if (!player) return;
+          const speed = s.launchSpeed3C * powerRef.current * chargePowerRef.current;
+          const vel = { x: (dir.dx / dir.mag) * speed, y: (dir.dy / dir.mag) * speed };
+          const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
+          const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
+          player.spin     = spinMap[shotTypeRef.current];
+          player.sideSpin = englishMap[englishRef.current];
+          eng.launchMarble(activeCueId, vel);
+          shotActiveRef.current = true;
+          setBilliardReady(false);
+          billiardReadyRef.current = false;
+          chargingRef.current = false;
+          setCharging(false);
+          chargePowerRef.current = 0;
+          setChargePower(0);
+          chargeDirectionRef.current = null;
+          return;
+        }
+        // Normal aim setup
         const eng = engineRef.current;
         const activeCueId = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
         const player = eng && activeCueId != null ? eng.marbles.find((m) => m.id === activeCueId) : null;
@@ -254,24 +300,21 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         aimingRef.current.y = evt.nativeEvent.locationY;
       },
       onPanResponderRelease: () => {
+        if (chargingRef.current) return;
         const aim = aimingRef.current;
         const eng = engineRef.current;
         const activeCueId = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
-        if (!aim || !eng || !billiardReady || activeCueId == null) { aimingRef.current = null; return; }
+        if (!aim || !eng || !billiardReadyRef.current || activeCueId == null) { aimingRef.current = null; return; }
         const player = eng.marbles.find((m) => m.id === activeCueId);
         if (!player) { aimingRef.current = null; return; }
         const dx = (aim.x || aim.startX) - player.pos.x;
         const dy = (aim.y || aim.startY) - player.pos.y;
-        const mag = Math.hypot(dx, dy) || 1;
-        const vel = { x: (dx / mag) * s.launchSpeed3C * powerRef.current, y: (dy / mag) * s.launchSpeed3C * powerRef.current };
-        shotActiveRef.current = true;
-        setBilliardReady(false);
-        // Apply spin technique to cue ball
-        const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
-        const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
-        player.spin    = spinMap[shotTypeRef.current];
-        player.sideSpin = englishMap[englishRef.current];
-        eng.launchMarble(activeCueId, vel);
+        const dist = Math.hypot(dx, dy);
+        if (dist < 5) { aimingRef.current = null; return; }
+        chargeDirectionRef.current = { dx, dy, mag: dist };
+        chargingRef.current = true;
+        setCharging(true);
+        chargeStartTimeRef.current = Date.now();
         aimingRef.current = null;
       },
     })
@@ -307,15 +350,26 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     const aim = aimingRef.current;
     const eng = engineRef.current;
     const activeCueId = turn === 1 ? playerIdRef.current : yellowIdRef.current;
-    if (!aim || !eng || !billiardReady || activeCueId == null) return null;
+    if (!eng || activeCueId == null) return null;
+    if (!aim && !charging) return null;
     const player = eng.marbles.find((m) => m.id === activeCueId);
-    const dx = (aim.x || aim.startX) - aim.startX;
-    const dy = (aim.y || aim.startY) - aim.startY;
-    const mag = Math.hypot(dx, dy) || 1;
-    let px = player ? player.pos.x : aim.startX;
-    let py = player ? player.pos.y : aim.startY;
-    let vx = (dx / mag) * s.launchSpeed3C * powerRef.current;
-    let vy = (dy / mag) * s.launchSpeed3C * powerRef.current;
+    let dx: number, dy: number, mag: number;
+    if (charging && chargeDirectionRef.current) {
+      ({ dx, dy, mag } = chargeDirectionRef.current);
+    } else if (aim) {
+      dx = (aim.x || aim.startX) - aim.startX;
+      dy = (aim.y || aim.startY) - aim.startY;
+      mag = Math.hypot(dx, dy) || 1;
+    } else {
+      return null;
+    }
+    let px = player ? player.pos.x : (aim ? aim.startX : 0);
+    let py = player ? player.pos.y : (aim ? aim.startY : 0);
+    const effectiveSpeed = charging
+      ? s.launchSpeed3C * powerRef.current * chargePowerRef.current
+      : s.launchSpeed3C * powerRef.current;
+    let vx = (dx / mag) * effectiveSpeed;
+    let vy = (dy / mag) * effectiveSpeed;
     const r  = player ? player.radius : 0;
     const fr = player?.friction ?? eng.friction;
     const e  = eng.restitution;
@@ -361,6 +415,12 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     setTurn(1);
     setLastResult(null);
     setBilliardReady(true);
+    billiardReadyRef.current = true;
+    chargingRef.current = false;
+    setCharging(false);
+    chargePowerRef.current = 0;
+    setChargePower(0);
+    chargeDirectionRef.current = null;
     setMarbles([...eng.marbles]);
   };
 
@@ -405,40 +465,55 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         </View>
       </View>
 
-      {/* Shot technique selector */}
+      {/* Shot technique selector / Power charge meter — same fixed slot */}
       <View style={styles.techRow}>
-        {/* Spin row */}
-        <View style={styles.techGroup}>
-          {([
-            { key: 'draw',   label: '끌어치기', sub: 'Draw' },
-            { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
-            { key: 'follow', label: '밀어치기', sub: 'Follow' },
-          ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
-            <TouchableOpacity
-              key={key}
-              style={[styles.techBtn, shotType === key && styles.techBtnActive]}
-              onPress={() => setShotType(key)}
-            >
-              <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {/* English row */}
-        <View style={styles.techGroup}>
-          {([
-            { key: 'left',  label: '왼회전', sub: '← Eng' },
-            { key: 'none',  label: '무회전', sub: 'Center' },
-            { key: 'right', label: '오른회전', sub: 'Eng →' },
-          ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
-            <TouchableOpacity
-              key={key}
-              style={[styles.techBtn, english === key && styles.techBtnEnActive]}
-              onPress={() => setEnglish(key)}
-            >
-              <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {charging ? (
+          <View style={styles.powerMeterInner}>
+            <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
+            <View style={styles.powerMeterTrack}>
+              <View style={[styles.powerMeterFill, {
+                width: `${Math.round(chargePower * 100)}%` as any,
+                backgroundColor: chargePower > 0.7 ? '#e44' : chargePower > 0.4 ? '#f4a020' : '#2cc47a',
+              }]} />
+            </View>
+            <Text style={styles.powerMeterPct}>{Math.round(chargePower * 100)}%</Text>
+          </View>
+        ) : (
+          <>
+            {/* Spin row */}
+            <View style={styles.techGroup}>
+              {([
+                { key: 'draw',   label: '끌어치기', sub: 'Draw' },
+                { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
+                { key: 'follow', label: '밀어치기', sub: 'Follow' },
+              ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.techBtn, shotType === key && styles.techBtnActive]}
+                  onPress={() => setShotType(key)}
+                >
+                  <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {/* English row */}
+            <View style={styles.techGroup}>
+              {([
+                { key: 'left',  label: '왼회전', sub: '← Eng' },
+                { key: 'none',  label: '무회전', sub: 'Center' },
+                { key: 'right', label: '오른회전', sub: 'Eng →' },
+              ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.techBtn, english === key && styles.techBtnEnActive]}
+                  onPress={() => setEnglish(key)}
+                >
+                  <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.arenaWrap} {...pan.panHandlers}>
@@ -485,7 +560,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 28, height: 26, backgroundColor: '#666', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   backText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4 },
+  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4, height: 58 },
   techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
   techBtn: {
     flex: 1, alignItems: 'center', paddingVertical: 3, borderRadius: 6,
@@ -496,4 +571,10 @@ const styles = StyleSheet.create({
   techLabel:      { fontSize: 11, fontWeight: '700', color: '#444' },
   techSub:        { fontSize: 9,  fontWeight: '500', color: '#888' },
   techLabelActive: { color: '#fff' },
+
+  powerMeterInner: { width: '100%', alignItems: 'center', justifyContent: 'center', flex: 1 },
+  powerMeterLabel: { fontSize: 11, fontWeight: '800', color: '#fff', marginBottom: 3, letterSpacing: 1 },
+  powerMeterTrack: { width: '100%', height: 14, backgroundColor: '#333', borderRadius: 7, overflow: 'hidden' },
+  powerMeterFill: { height: '100%', borderRadius: 7 },
+  powerMeterPct: { fontSize: 10, fontWeight: '700', color: '#fff', marginTop: 2 },
 });
