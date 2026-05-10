@@ -15,7 +15,7 @@ import { Audio } from 'expo-av';
 import { PhysicsEngine, Marble } from '../game/physics';
 import {
   FOURBALL_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION,
-  FOURBALL_BALL_RADIUS, FOURBALL_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
+  FOURBALL_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
   FOURBALL_SETTLE_FRAMES, FOURBALL_WIN_SCORE
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';

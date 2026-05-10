@@ -15,7 +15,7 @@ import { Audio } from 'expo-av';
 import { PhysicsEngine, Marble } from '../game/physics';
 import {
   BILLIARDS_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION,
-  BILLIARDS_BALL_RADIUS, BILLIARDS_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
+  BILLIARDS_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
   BILLIARDS_SETTLE_FRAMES,
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
