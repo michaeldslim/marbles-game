@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
+import { Dimensions } from 'react-native';
 import {
-  BILLIARDS_BALL_RADIUS,
-  FOURBALL_BALL_RADIUS,
   BILLIARDS_BALL_FRICTION,
   FOURBALL_BALL_FRICTION,
   ENGINE_DEFAULT_RESTITUTION,
@@ -38,9 +37,14 @@ export interface Settings {
   stopDrag: number;           // Linear deceleration to help balls stop sooner
 }
 
+const screenW = Dimensions.get('window').width;
+export const AUTO_BALL_RADIUS = Math.round(screenW * 0.042); // 360→15, 412→17, 659→28
+export const BALL_RADIUS_MIN  = Math.round(AUTO_BALL_RADIUS * 0.7);
+export const BALL_RADIUS_MAX  = Math.round(AUTO_BALL_RADIUS * 1.6);
+
 export const DEFAULT_SETTINGS: Settings = {
-  ballRadius3C:  BILLIARDS_BALL_RADIUS,
-  ballRadius4B:  FOURBALL_BALL_RADIUS,
+  ballRadius3C:  AUTO_BALL_RADIUS,
+  ballRadius4B:  AUTO_BALL_RADIUS,
   restitution:   ENGINE_DEFAULT_RESTITUTION,
   friction3C:    BILLIARDS_BALL_FRICTION,
   friction4B:    FOURBALL_BALL_FRICTION,

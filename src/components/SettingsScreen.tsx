@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { useSettings, DEFAULT_SETTINGS } from '../context/SettingsContext';
+import { useSettings, DEFAULT_SETTINGS, BALL_RADIUS_MIN, BALL_RADIUS_MAX } from '../context/SettingsContext';
 
 interface Props {
   onBack: () => void;
@@ -87,7 +87,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           label="3-Cushion Ball Radius"
           labelKo="3쿠션 공 반지름"
           value={settings.ballRadius3C}
-          min={10} max={20} step={1}
+          min={BALL_RADIUS_MIN} max={BALL_RADIUS_MAX} step={1}
           format={(v) => `${v} px`}
           onValueChange={(v) => updateSetting('ballRadius3C', v)}
           desc={{
@@ -99,7 +99,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           label="4-Ball Ball Radius"
           labelKo="사구 공 반지름"
           value={settings.ballRadius4B}
-          min={10} max={20} step={1}
+          min={BALL_RADIUS_MIN} max={BALL_RADIUS_MAX} step={1}
           format={(v) => `${v} px`}
           onValueChange={(v) => updateSetting('ballRadius4B', v)}
           desc={{
