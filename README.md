@@ -109,7 +109,7 @@ eas update --channel production --message "Fix bug / update description"
 | **Scoring** | Both reds hit → **+1 pt**, keep shooting | 두 빨간 공 모두 맞히면 **+1점**, 연속 샷 가능 |
 | **Miss** | Failed to hit both reds → turn changes, no penalty | 두 빨간 공을 모두 맞히지 못하면 턴 교체, 패널티 없음 |
 | **Foul** | Cue ball hits the **opponent's cue ball** → **−1 pt**, turn changes | 큐볼이 **상대방 큐볼**을 맞히면 **−1점**, 턴 교체 |
-| **Win condition** | First player to reach **20 points** wins | 먼저 **20점**에 도달한 플레이어가 승리 |
+| **Win condition** | First player to reach **20 points** wins | 먼저 **10점**에 도달한 플레이어가 승리 |
 | **Balls** | 🟡 Yellow (Player 1 cue) · ⚪ White (Player 2 cue) · 🔴🔴 Two red balls (object balls) | 노란 공(Player 1 큐볼) · 흰 공(Player 2 큐볼) · 빨간 공 2개(목적구) |
 
 #### How to Shoot / 조준 및 발사 방법
@@ -186,15 +186,15 @@ Effective launch speed (px/s) = `LAUNCH_SPEED × PLAYER_POWER × chargePower (0.
 
 | Parameter | 3-Cushion | 4-Ball | Notes |
 |---|---|---|---|
-| `LAUNCH_SPEED` | `225` | `225` | Base speed multiplier |
-| `PLAYER_POWER` | `5.5` | `5.5` | Shared constant |
+| `LAUNCH_SPEED` | `220` | `220` | Base speed multiplier |
+| `PLAYER_POWER` | `5` | `5` | Shared constant |
 | Max speed | **1012 px/s** | **1012 px/s** | At full charge |
 | Min speed | **101 px/s** | **101 px/s** | At minimum charge |
-| `BALL_FRICTION` | `0.993` | `0.993` | Per-frame velocity × factor |
+| `BALL_FRICTION` | `0.991` | `0.991` | Per-frame velocity × factor |
 | Speed after 1 s (60 fps) | ~65% | ~65% | `0.993^60 ≈ 0.65` |
 | Speed after 2 s (60 fps) | ~42% | ~42% | `0.993^120 ≈ 0.42` |
 
 > **Tuning tips / 조정 가이드**  
-> - Want more power? Raise `LAUNCH_SPEED` (e.g. 225 → 250) or `PLAYER_POWER`.  
-> - Want balls to roll further? Raise `BALL_FRICTION` (e.g. 0.993 → 0.995).  
-> - Want a snappier stop? Lower `BALL_FRICTION` (e.g. 0.993 → 0.988).
+> - Want more power? Raise `LAUNCH_SPEED` (e.g. 220 → 250) or `PLAYER_POWER`.  
+> - Want balls to roll further? Raise `BALL_FRICTION` (e.g. 0.991 → 0.995).  
+> - Want a snappier stop? Lower `BALL_FRICTION` (e.g. 0.991 → 0.988).

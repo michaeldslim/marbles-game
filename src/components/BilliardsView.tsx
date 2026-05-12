@@ -13,11 +13,7 @@ import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpaci
 import Svg, { Circle, Rect, Ellipse, Polyline, Line } from 'react-native-svg';
 import { Audio } from 'expo-av';
 import { PhysicsEngine, Marble } from '../game/physics';
-import {
-  BILLIARDS_LAUNCH_SPEED, DEFAULT_PLAYER_POWER, ENGINE_DEFAULT_RESTITUTION,
-  BILLIARDS_BALL_FRICTION, SETTLE_SPEED_THRESHOLD,
-  BILLIARDS_SETTLE_FRAMES,
-} from '../game/constants';
+import { DEFAULT_PLAYER_POWER, SETTLE_SPEED_THRESHOLD, BILLIARDS_SETTLE_FRAMES } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
 
 interface Props {
@@ -591,7 +587,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     let sideSpin = englishMap[englishRef.current];
     const dt = 1 / 60;
     const pts: number[] = [];
-    for (let i = 0; i < 140; i++) {
+    for (let i = 0; i < 40; i++) {
       px += vx * dt; py += vy * dt;
       vx *= fr; vy *= fr;
       if (px - r < 0) { px = r; const pvx = vx; vx *= -e; if (sideSpin) { vy -= sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
