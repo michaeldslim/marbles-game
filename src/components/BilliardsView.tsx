@@ -384,7 +384,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
     let sideSpin = englishMap[englishRef.current];
     const dt = 1 / 60;
     const pts: number[] = [];
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 140; i++) {
       px += vx * dt; py += vy * dt;
       vx *= fr; vy *= fr;
       if (px - r < 0) { px = r; const pvx = vx; vx *= -e; if (sideSpin) { vy -= sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
