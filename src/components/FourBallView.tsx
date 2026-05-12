@@ -83,8 +83,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const cx = evt.nativeEvent.locationX - 40;
-        const cy = evt.nativeEvent.locationY - 40;
+        const cx = evt.nativeEvent.locationX - 64;
+        const cy = evt.nativeEvent.locationY - 64;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -96,8 +96,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         setShotType(snapSpin); setEnglish(snapEng);
       },
       onPanResponderMove: (evt) => {
-        const cx = evt.nativeEvent.locationX - 40;
-        const cy = evt.nativeEvent.locationY - 40;
+        const cx = evt.nativeEvent.locationX - 64;
+        const cy = evt.nativeEvent.locationY - 64;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -107,6 +107,31 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         const snapEng: EnglishType = nx < -PICKER_R * 0.3 ? 'left' : nx > PICKER_R * 0.3 ? 'right' : 'none';
         shotTypeRef.current = snapSpin; englishRef.current = snapEng;
         setShotType(snapSpin); setEnglish(snapEng);
+      },
+    })
+  ).current;
+  // Picker container drag
+  const sizeRef = useRef({ w: 375, h: 700 });
+  useEffect(() => { sizeRef.current = size; }, [size]);
+  const pickerPosRef = useRef<{ x: number; y: number } | null>(null);
+  const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null);
+  const pickerDragStartRef = useRef({ x: 0, y: 0 });
+  const pickerMovePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        const SIZE = 128;
+        const cur = pickerPosRef.current ?? { x: sizeRef.current.w - SIZE - 12, y: 130 };
+        pickerDragStartRef.current = { ...cur };
+      },
+      onPanResponderMove: (_, g) => {
+        const SIZE = 128; const HANDLE_H = 22;
+        const boardH = sizeRef.current.h - 140;
+        const nx = Math.max(0, Math.min(sizeRef.current.w - SIZE, pickerDragStartRef.current.x + g.dx));
+        const ny = Math.max(0, Math.min(boardH - SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
+        pickerPosRef.current = { x: nx, y: ny };
+        setPickerPos({ x: nx, y: ny });
       },
     })
   ).current;
@@ -391,21 +416,29 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
 
   const renderPicker = () => {
     if (winner || !ready) return null;
-    const SIZE = 128; const cx = SIZE / 2; const cy = SIZE / 2;
+    const SIZE = 128; const HANDLE_H = 22;
+    const cx = SIZE / 2; const cy = SIZE / 2;
     const dotX = cx + pickerContact.x; const dotY = cy + pickerContact.y;
+    const pos = pickerPos ?? { x: size.w - SIZE - 12, y: 130 };
     return (
-      <View
-        style={{ position: 'absolute', top: 130, right: 12, width: SIZE, height: SIZE }}
-        {...pickerPan.panHandlers}
-      >
-        <Svg width={SIZE} height={SIZE}>
-          <Circle cx={cx} cy={cy} r={PICKER_R} fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
-          <Line x1={cx} y1={cy - PICKER_R} x2={cx} y2={cy + PICKER_R} stroke="rgba(255,255,255,0.25)" strokeWidth={0.8} />
-          <Line x1={cx - PICKER_R} y1={cy} x2={cx + PICKER_R} y2={cy} stroke="rgba(255,255,255,0.25)" strokeWidth={0.8} />
-          <Circle cx={cx} cy={cy} r={PICKER_R * 0.3} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={0.8} />
-          <Circle cx={dotX} cy={dotY} r={9} fill="#fff" opacity={0.95} />
-          <Circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#333" strokeWidth={1.5} />
-        </Svg>
+      <View style={{ position: 'absolute', top: pos.y, left: pos.x, width: SIZE, height: SIZE + HANDLE_H }}>
+        <View
+          style={{ height: HANDLE_H, width: SIZE, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', borderTopLeftRadius: 6, borderTopRightRadius: 6, rowGap: 4 }}
+          {...pickerMovePan.panHandlers}
+        >
+          <View style={{ width: 28, height: 2.5, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+          <View style={{ width: 28, height: 2.5, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+        </View>
+        <View style={{ width: SIZE, height: SIZE }} {...pickerPan.panHandlers}>
+          <Svg width={SIZE} height={SIZE}>
+            <Circle cx={cx} cy={cy} r={PICKER_R} fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
+            <Line x1={cx} y1={cy - PICKER_R} x2={cx} y2={cy + PICKER_R} stroke="rgba(255,255,255,0.25)" strokeWidth={0.8} />
+            <Line x1={cx - PICKER_R} y1={cy} x2={cx + PICKER_R} y2={cy} stroke="rgba(255,255,255,0.25)" strokeWidth={0.8} />
+            <Circle cx={cx} cy={cy} r={PICKER_R * 0.3} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={0.8} />
+            <Circle cx={dotX} cy={dotY} r={9} fill="#fff" opacity={0.95} />
+            <Circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#333" strokeWidth={1.5} />
+          </Svg>
+        </View>
       </View>
     );
   };
