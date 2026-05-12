@@ -178,4 +178,23 @@ Both game modes support the following shot techniques, selectable before each sh
 | Cushion English / 쿠션 편향 | Side-spin deflects tangential velocity on cushion bounce via `ENGLISH_FACTOR = 0.32` |
 | Spin transfer / 충돌 스핀 전달 | On marble collision, spin shifts cue ball along normal via `SPIN_TRANSFER_FACTOR = 0.45` |
 | Restitution / 반발계수 | `ENGINE_DEFAULT_RESTITUTION = 0.8` |
-| Ball friction / 마찰 | 3-Cushion: `0.991` · 4-Ball: `0.987` |
+| Ball friction / 마찰 | 3-Cushion: `0.993` · 4-Ball: `0.993` (per-frame multiplier at 60 fps) |
+
+### Launch Speed & Friction / 발사 속도 및 마찰 튜닝
+
+Effective launch speed (px/s) = `LAUNCH_SPEED × PLAYER_POWER × chargePower (0.1 – 1.0)`
+
+| Parameter | 3-Cushion | 4-Ball | Notes |
+|---|---|---|---|
+| `LAUNCH_SPEED` | `225` | `225` | Base speed multiplier |
+| `PLAYER_POWER` | `5.5` | `5.5` | Shared constant |
+| Max speed | **1012 px/s** | **1012 px/s** | At full charge |
+| Min speed | **101 px/s** | **101 px/s** | At minimum charge |
+| `BALL_FRICTION` | `0.993` | `0.993` | Per-frame velocity × factor |
+| Speed after 1 s (60 fps) | ~65% | ~65% | `0.993^60 ≈ 0.65` |
+| Speed after 2 s (60 fps) | ~42% | ~42% | `0.993^120 ≈ 0.42` |
+
+> **Tuning tips / 조정 가이드**  
+> - Want more power? Raise `LAUNCH_SPEED` (e.g. 225 → 250) or `PLAYER_POWER`.  
+> - Want balls to roll further? Raise `BALL_FRICTION` (e.g. 0.993 → 0.995).  
+> - Want a snappier stop? Lower `BALL_FRICTION` (e.g. 0.993 → 0.988).
