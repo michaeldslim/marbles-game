@@ -380,15 +380,19 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     const r = active ? active.radius : 0;
     const fr = active?.friction ?? eng.friction;
     const e = eng.restitution;
+    const ef = eng.englishFactor;
+    const scr = 0.6; // SIDE_SPIN_CUSHION_RETAIN
+    const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
+    let sideSpin = englishMap[englishRef.current];
     const dt = 1 / 60;
     const pts: number[] = [];
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 130; i++) {
       px += vx * dt; py += vy * dt;
       vx *= fr; vy *= fr;
-      if (px - r < 0) { px = r; vx *= -e; }
-      if (px + r > eng.width) { px = eng.width - r; vx *= -e; }
-      if (py - r < 0) { py = r; vy *= -e; }
-      if (py + r > eng.height) { py = eng.height - r; vy *= -e; }
+      if (px - r < 0) { px = r; const pvx = vx; vx *= -e; if (sideSpin) { vy -= sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
+      if (px + r > eng.width) { px = eng.width - r; const pvx = vx; vx *= -e; if (sideSpin) { vy += sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
+      if (py - r < 0) { py = r; const pvy = vy; vy *= -e; if (sideSpin) { vx += sideSpin * ef * Math.abs(pvy); sideSpin *= scr; } }
+      if (py + r > eng.height) { py = eng.height - r; const pvy = vy; vy *= -e; if (sideSpin) { vx -= sideSpin * ef * Math.abs(pvy); sideSpin *= scr; } }
       pts.push(px, py);
     }
     return <Polyline points={pts.join(' ')} fill="none" stroke="#ffffff" strokeWidth={3} strokeOpacity={0.65} strokeDasharray={[6, 6]} />;
@@ -494,15 +498,29 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
       {!winner && (
         <View style={styles.techRow}>
           {charging ? (
-            <View style={styles.powerMeterInner}>
-              <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
-              <View style={styles.powerMeterTrack}>
-                <View style={[styles.powerMeterFill, {
-                  width: `${Math.round(chargePower * 100)}%` as any,
-                  backgroundColor: chargePower > 0.7 ? '#e44' : chargePower > 0.4 ? '#f4a020' : '#2cc47a',
-                }]} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+              <View style={styles.powerMeterInner}>
+                <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
+                <View style={styles.powerMeterTrack}>
+                  <View style={[styles.powerMeterFill, {
+                    width: `${Math.round(chargePower * 100)}%` as any,
+                    backgroundColor: chargePower > 0.7 ? '#e44' : chargePower > 0.4 ? '#f4a020' : '#2cc47a',
+                  }]} />
+                </View>
+                <Text style={styles.powerMeterPct}>{Math.round(chargePower * 100)}%</Text>
               </View>
-              <Text style={styles.powerMeterPct}>{Math.round(chargePower * 100)}%</Text>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => {
+                  chargingRef.current = false;
+                  setCharging(false);
+                  chargeDirectionRef.current = null;
+                  chargePowerRef.current = 0;
+                  setChargePower(0);
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>✕</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <>
@@ -605,7 +623,8 @@ const styles = StyleSheet.create({
   techSub:        { fontSize: 9,  fontWeight: '500', color: '#888' },
   techLabelActive: { color: '#fff' },
 
-  powerMeterInner: { width: '100%', alignItems: 'center', justifyContent: 'center', flex: 1 },
+  powerMeterInner: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+  cancelBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#c0392b', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   powerMeterLabel: { fontSize: 11, fontWeight: '800', color: '#fff', marginBottom: 3, letterSpacing: 1 },
   powerMeterTrack: { width: '100%', height: 14, backgroundColor: '#333', borderRadius: 7, overflow: 'hidden' },
   powerMeterFill: { height: '100%', borderRadius: 7 },

@@ -100,7 +100,7 @@ export class PhysicsEngine {
         m.vel.x *= -this.restitution;
         // English: side-spin deflects tangential (vy) component off vertical cushion
         if (m.sideSpin) {
-          m.vel.y += m.sideSpin * this.englishFactor * Math.abs(prevVx);
+          m.vel.y -= m.sideSpin * this.englishFactor * Math.abs(prevVx);
           m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
         }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
@@ -132,7 +132,7 @@ export class PhysicsEngine {
         const prevVy = m.vel.y;
         m.vel.y *= -this.restitution;
         if (m.sideSpin) {
-          m.vel.x += m.sideSpin * this.englishFactor * Math.abs(prevVy);
+          m.vel.x -= m.sideSpin * this.englishFactor * Math.abs(prevVy);
           m.sideSpin *= SIDE_SPIN_CUSHION_RETAIN;
         }
         m.wallHitCount = (m.wallHitCount ?? 0) + 1;
