@@ -525,7 +525,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
             stroke="#fff" strokeWidth={1}
             strokeDasharray={[3, 3]}
           />
-          {/* Vertical reference line through target ball center */}
+          {/* Vertical + Horizontal reference lines through target ball center */}
           {(() => {
             const c = hitMarble.color || '#fff';
             const hex = c.replace('#', '');
@@ -533,12 +533,20 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
             const g2 = parseInt(hex.length === 3 ? hex[1] + hex[1] : hex.slice(2, 4), 16);
             const b2 = parseInt(hex.length === 3 ? hex[2] + hex[2] : hex.slice(4, 6), 16);
             const isLight = (r2 * 0.299 + g2 * 0.587 + b2 * 0.114) > 160;
+            const lineColor = isLight ? '#000' : '#fff';
             return (
-              <Line
-                x1={hitMarble.pos.x} y1={hitMarble.pos.y - hitMarble.radius}
-                x2={hitMarble.pos.x} y2={hitMarble.pos.y + hitMarble.radius}
-                stroke={isLight ? '#000' : '#fff'} strokeWidth={1} strokeDasharray={[2, 2]} strokeOpacity={0.85}
-              />
+              <>
+                <Line
+                  x1={hitMarble.pos.x} y1={hitMarble.pos.y - hitMarble.radius}
+                  x2={hitMarble.pos.x} y2={hitMarble.pos.y + hitMarble.radius}
+                  stroke={lineColor} strokeWidth={1} strokeDasharray={[2, 2]} strokeOpacity={0.85}
+                />
+                <Line
+                  x1={hitMarble.pos.x - hitMarble.radius} y1={hitMarble.pos.y}
+                  x2={hitMarble.pos.x + hitMarble.radius} y2={hitMarble.pos.y}
+                  stroke={lineColor} strokeWidth={1} strokeDasharray={[2, 2]} strokeOpacity={0.85}
+                />
+              </>
             );
           })()}
         </Svg>
