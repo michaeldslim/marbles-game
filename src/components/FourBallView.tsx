@@ -10,7 +10,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import Svg, { Circle, Rect, Ellipse, Polyline } from 'react-native-svg';
+import Svg, { Circle, Rect, Ellipse, Polyline, Line } from 'react-native-svg';
 import { Audio } from 'expo-av';
 import { PhysicsEngine, Marble } from '../game/physics';
 import {
@@ -73,6 +73,43 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
   const englishRef  = useRef<EnglishType>('none');
   useEffect(() => { shotTypeRef.current = shotType; }, [shotType]);
   useEffect(() => { englishRef.current  = english;  }, [english]);
+
+  // Cue ball contact point picker
+  const PICKER_R = 54;
+  const pickerContactRef = useRef({ x: 0, y: 0 });
+  const [pickerContact, setPickerContact] = useState({ x: 0, y: 0 });
+  const pickerPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const cx = evt.nativeEvent.locationX - 40;
+        const cy = evt.nativeEvent.locationY - 40;
+        const dist = Math.hypot(cx, cy);
+        const scale = dist > PICKER_R ? PICKER_R / dist : 1;
+        const nx = cx * scale; const ny = cy * scale;
+        pickerContactRef.current = { x: nx, y: ny };
+        setPickerContact({ x: nx, y: ny });
+        const snapSpin: SpinType = ny < -PICKER_R * 0.3 ? 'follow' : ny > PICKER_R * 0.3 ? 'draw' : 'stop';
+        const snapEng: EnglishType = nx < -PICKER_R * 0.3 ? 'left' : nx > PICKER_R * 0.3 ? 'right' : 'none';
+        shotTypeRef.current = snapSpin; englishRef.current = snapEng;
+        setShotType(snapSpin); setEnglish(snapEng);
+      },
+      onPanResponderMove: (evt) => {
+        const cx = evt.nativeEvent.locationX - 40;
+        const cy = evt.nativeEvent.locationY - 40;
+        const dist = Math.hypot(cx, cy);
+        const scale = dist > PICKER_R ? PICKER_R / dist : 1;
+        const nx = cx * scale; const ny = cy * scale;
+        pickerContactRef.current = { x: nx, y: ny };
+        setPickerContact({ x: nx, y: ny });
+        const snapSpin: SpinType = ny < -PICKER_R * 0.3 ? 'follow' : ny > PICKER_R * 0.3 ? 'draw' : 'stop';
+        const snapEng: EnglishType = nx < -PICKER_R * 0.3 ? 'left' : nx > PICKER_R * 0.3 ? 'right' : 'none';
+        shotTypeRef.current = snapSpin; englishRef.current = snapEng;
+        setShotType(snapSpin); setEnglish(snapEng);
+      },
+    })
+  ).current;
 
   // Two-step power charging
   const readyRef = useRef<boolean>(true);
@@ -215,6 +252,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
                 englishRef.current  = 'none';
                 setShotType('stop');
                 setEnglish('none');
+                pickerContactRef.current = { x: 0, y: 0 };
+                setPickerContact({ x: 0, y: 0 });
               }
               setReady(true);
             }
@@ -276,10 +315,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
           if (!active) return;
           const speed = s.launchSpeed4B * powerRef.current * chargePowerRef.current;
           const vel = { x: (dir.dx / dir.mag) * speed, y: (dir.dy / dir.mag) * speed };
-          const spinMap:    Record<string, number> = { draw: -0.85, stop: 0, follow: 0.85 };
-          const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
-          active.spin     = spinMap[shotTypeRef.current];
-          active.sideSpin = englishMap[englishRef.current];
+          active.spin     = -(pickerContactRef.current.y / PICKER_R) * 0.85;
+          active.sideSpin =  (pickerContactRef.current.x / PICKER_R) * 0.85;
           eng.launchMarble(activeCueId, vel);
           shotActiveRef.current = true;
           setReady(false);
@@ -351,6 +388,130 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         </React.Fragment>
       );
     });
+
+  const renderPicker = () => {
+    if (winner || !ready) return null;
+    const SIZE = 128; const cx = SIZE / 2; const cy = SIZE / 2;
+    const dotX = cx + pickerContact.x; const dotY = cy + pickerContact.y;
+    return (
+      <View
+        style={{ position: 'absolute', top: 130, right: 12, width: SIZE, height: SIZE }}
+        {...pickerPan.panHandlers}
+      >
+        <Svg width={SIZE} height={SIZE}>
+          <Circle cx={cx} cy={cy} r={PICKER_R} fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
+          <Line x1={cx} y1={cy - PICKER_R} x2={cx} y2={cy + PICKER_R} stroke="rgba(255,255,255,0.25)" strokeWidth={0.8} />
+          <Line x1={cx - PICKER_R} y1={cy} x2={cx + PICKER_R} y2={cy} stroke="rgba(255,255,255,0.25)" strokeWidth={0.8} />
+          <Circle cx={cx} cy={cy} r={PICKER_R * 0.3} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={0.8} />
+          <Circle cx={dotX} cy={dotY} r={9} fill="#fff" opacity={0.95} />
+          <Circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#333" strokeWidth={1.5} />
+        </Svg>
+      </View>
+    );
+  };
+
+  const renderMagnifier = () => {
+    const aim = aimingRef.current;
+    const eng = engineRef.current;
+    const activeCueId = turn === 'yellow' ? yellowIdRef.current : playerIdRef.current;
+    if (!eng || activeCueId == null) return null;
+    if (!aim && !charging) return null;
+
+    let dx: number, dy: number, mag: number;
+    if (charging && chargeDirectionRef.current) {
+      ({ dx, dy, mag } = chargeDirectionRef.current);
+    } else if (aim) {
+      dx = (aim.x || aim.startX) - aim.startX;
+      dy = (aim.y || aim.startY) - aim.startY;
+      mag = Math.hypot(dx, dy) || 1;
+    } else {
+      return null;
+    }
+
+    const active = eng.marbles.find((m) => m.id === activeCueId);
+    if (!active) return null;
+    const ux = dx / mag;
+    const uy = dy / mag;
+
+    // Ray-circle intersection: find first target marble in the aim direction
+    let minT = Infinity;
+    let hitMarble: Marble | null = null;
+    for (const m of eng.marbles) {
+      if (m.id === activeCueId || m.captured) continue;
+      const fx = active.pos.x - m.pos.x;
+      const fy = active.pos.y - m.pos.y;
+      const minDist = active.radius + m.radius;
+      const b = 2 * (fx * ux + fy * uy);
+      const c = fx * fx + fy * fy - minDist * minDist;
+      const disc = b * b - 4 * c;
+      if (disc < 0) continue;
+      const t = (-b - Math.sqrt(disc)) / 2;
+      if (t > 0 && t < minT) { minT = t; hitMarble = m; }
+    }
+    if (!hitMarble) return null;
+
+    const collX = active.pos.x + ux * minT;
+    const collY = active.pos.y + uy * minT;
+    const MAG_SIZE = 110;
+    const ZOOM = 2.0;
+    const worldW = MAG_SIZE / ZOOM;
+    const worldH = MAG_SIZE / ZOOM;
+    const midX = (collX + hitMarble.pos.x) / 2;
+    const midY = (collY + hitMarble.pos.y) / 2;
+    const viewBox = `${midX - worldW / 2} ${midY - worldH / 2} ${worldW} ${worldH}`;
+
+    return (
+      <View
+        style={{
+          position: 'absolute', top: 12, right: 12,
+          width: MAG_SIZE, height: MAG_SIZE,
+          borderRadius: MAG_SIZE / 2,
+          overflow: 'hidden',
+          borderWidth: 2,
+          borderColor: 'rgba(255,255,255,0.8)',
+        }}
+        pointerEvents="none"
+      >
+        <Svg width={MAG_SIZE} height={MAG_SIZE} viewBox={viewBox}>
+          <Rect x={0} y={0} width={eng.width} height={eng.height} fill="#2d6a4f" />
+          <Rect x={6} y={6} width={eng.width - 12} height={eng.height - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
+          {eng.marbles.filter((m) => !m.captured).map((m) => (
+            <Circle
+              key={m.id}
+              cx={m.pos.x} cy={m.pos.y} r={m.radius}
+              fill={m.color || '#fff'}
+              stroke={m.id === activeCueId ? '#999' : 'none'}
+              strokeWidth={1.5}
+            />
+          ))}
+          {/* Ghost cue ball at collision position */}
+          <Circle
+            cx={collX} cy={collY} r={active.radius}
+            fill={active.color || '#fff'}
+            opacity={0.5}
+            stroke="#fff" strokeWidth={1}
+            strokeDasharray={[3, 3]}
+          />
+          {/* Vertical reference line through target ball center */}
+          {(() => {
+            const c = hitMarble.color || '#fff';
+            const hex = c.replace('#', '');
+            const r2 = parseInt(hex.length === 3 ? hex[0] + hex[0] : hex.slice(0, 2), 16);
+            const g2 = parseInt(hex.length === 3 ? hex[1] + hex[1] : hex.slice(2, 4), 16);
+            const b2 = parseInt(hex.length === 3 ? hex[2] + hex[2] : hex.slice(4, 6), 16);
+            const isLight = (r2 * 0.299 + g2 * 0.587 + b2 * 0.114) > 160;
+            return (
+              <Line
+                x1={hitMarble.pos.x} y1={hitMarble.pos.y - hitMarble.radius}
+                x2={hitMarble.pos.x} y2={hitMarble.pos.y + hitMarble.radius}
+                stroke={isLight ? '#000' : '#fff'} strokeWidth={1} strokeDasharray={[2, 2]} strokeOpacity={0.85}
+              />
+            );
+          })()}
+        </Svg>
+      </View>
+    );
+  };
 
   const renderTrajectory = () => {
     const aim = aimingRef.current;
@@ -426,6 +587,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     englishRef.current  = 'none';
     setShotType('stop');
     setEnglish('none');
+    pickerContactRef.current = { x: 0, y: 0 };
+    setPickerContact({ x: 0, y: 0 });
     setReady(true);
     readyRef.current = true;
     chargingRef.current = false;
@@ -533,7 +696,16 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
                   <TouchableOpacity
                     key={key}
                     style={[styles.techBtn, shotType === key && styles.techBtnActive]}
-                    onPress={() => setShotType(key)}
+                    onPress={() => {
+                      setShotType(key);
+                      const yMap: Record<SpinType, number> = { draw: PICKER_R, stop: 0, follow: -PICKER_R };
+                      const nx = pickerContactRef.current.x;
+                      const ny = yMap[key];
+                      const d = Math.sqrt(nx * nx + ny * ny);
+                      const s = d > PICKER_R ? PICKER_R / d : 1;
+                      pickerContactRef.current = { x: nx * s, y: ny * s };
+                      setPickerContact({ x: nx * s, y: ny * s });
+                    }}
                   >
                     <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
                   </TouchableOpacity>
@@ -548,7 +720,16 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
                   <TouchableOpacity
                     key={key}
                     style={[styles.techBtn, english === key && styles.techBtnEnActive]}
-                    onPress={() => setEnglish(key)}
+                    onPress={() => {
+                      setEnglish(key);
+                      const xMap: Record<EnglishType, number> = { left: -PICKER_R, none: 0, right: PICKER_R };
+                      const nx = xMap[key];
+                      const ny = pickerContactRef.current.y;
+                      const d = Math.sqrt(nx * nx + ny * ny);
+                      const s = d > PICKER_R ? PICKER_R / d : 1;
+                      pickerContactRef.current = { x: nx * s, y: ny * s };
+                      setPickerContact({ x: nx * s, y: ny * s });
+                    }}
                   >
                     <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
                   </TouchableOpacity>
@@ -560,12 +741,16 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
       )}
 
       <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <Svg width={size.w} height={boardH}>
-          <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
-          <Rect x={6} y={6} width={size.w - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
-          {renderMarbles()}
-          {renderTrajectory()}
-        </Svg>
+        <View style={{ width: size.w, height: boardH }}>
+          <Svg width={size.w} height={boardH}>
+            <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
+            <Rect x={6} y={6} width={size.w - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
+            {renderMarbles()}
+            {renderTrajectory()}
+          </Svg>
+          {renderMagnifier()}
+          {renderPicker()}
+        </View>
       </View>
     </View>
   );
