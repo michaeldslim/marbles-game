@@ -140,6 +140,22 @@ Both game modes support the following shot techniques, selectable before each sh
 | **무회전** | 무회전 | Center ball (No English) | 사이드 스핀 없음. 기본 반사 각도 유지. · No side-spin; standard reflection angle. |
 | **오른회전** | 오른회전 | Right English | 큐볼에 우측 사이드 스핀을 주어 쿠션 반사 시 오른쪽으로 편향됩니다. · Right side-spin; ball deflects right off cushions. |
 
+#### 동작 기준 — 방향 기준 (중요)
+
+- 앱의 `왼회전`/`오른회전`은 **사용자가 화면을 보는 기준이 아니라, 공이 발사되는 방향(이동 방향)을 기준**으로 동작합니다.
+- 즉, 오른회전(`Right English`)을 선택하면 "공의 진행방향에서 본 오른쪽" 쪽으로 쿠션 충돌 후 편향이 발생합니다. 왼회전(`Left English`)은 그 반대입니다.
+
+예시 (오른회전 선택 시):
+
+| 공의 이동방향 | 맞는 쿠션 | 미리보기/실제 편향 방향 |
+|---:|---|---|
+| → (오른쪽으로 발사) | 오른쪽 벽 | 아래쪽으로 꺾임 |
+| ← (왼쪽으로 발사) | 왼쪽 벽 | 위쪽으로 꺾임 |
+| ↑ (위쪽으로 발사) | 위쪽 벽 | 오른쪽으로 꺾임 |
+| ↓ (아래쪽으로 발사) | 아래쪽 벽 | 왼쪽으로 꺾임 |
+
+이 규칙 덕분에, 공을 어느 방향으로 보내느냐에 따라 같은 `오른회전`이라도 화면에서 보이는 편향 방향은 달라질 수 있습니다. 미리보기 선은 이 발사 방향 기준으로 쿠션에서의 영어 효과를 반영하도록 업데이트되어 있습니다.
+
 ### Technique Combinations / 기술 조합 예시
 
 | 조합 | Combination | 활용 상황 |
