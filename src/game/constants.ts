@@ -44,3 +44,6 @@ export const SIDE_SPIN_CUSHION_RETAIN = 0.6;
 // Linear deceleration (px/s²) applied at all speeds to make balls stop sooner.
 // At high speeds this is negligible vs multiplicative friction; at low speeds it dominates.
 export const STOP_DRAG = 5;
+
+// default length of the trajectory preview line in pixels
+export const TRAJECTORY_LENGTH = 60;

@@ -11,6 +11,7 @@ import {
   ENGLISH_FACTOR,
   DEFAULT_CHARGE_CYCLES_PER_SEC,
   STOP_DRAG,
+  TRAJECTORY_LENGTH,
 } from '../game/constants';
 
 export interface Settings {
@@ -35,6 +36,8 @@ export interface Settings {
 
   // Stopping / 정지
   stopDrag: number;           // Linear deceleration to help balls stop sooner
+
+  trajectoryLength: number;   // Length of the trajectory preview line in pixels
 }
 
 const screenW = Dimensions.get('window').width;
@@ -55,6 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
   spinTransfer:  SPIN_TRANSFER_FACTOR,
   englishFactor: ENGLISH_FACTOR,
   stopDrag:      STOP_DRAG,
+  trajectoryLength: TRAJECTORY_LENGTH,
 };
 
 interface SettingsContextValue {
