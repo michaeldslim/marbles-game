@@ -1,6 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Circle, Ellipse } from 'react-native-svg';
 import { Marble } from '../game/physics';
+
+// module-level rotation state store so visual rotation survives component re-renders
+const rotStore: Record<number, { angle: number; lastX: number; lastY: number }> = {};
 
 type Props = {
   marbles: Marble[];
@@ -28,8 +31,17 @@ export default function BilliardsMarbles({
   activeCueId,
   isReady,
 }: Props) {
-  // track per-marble visual rotation state between renders
-  const rotRef = useRef<Record<number, { angle: number; lastX: number; lastY: number }>>({});
+  // rotStore is a module-level map (persisting across renders/components)
+  // we mutate it directly from the IIFE rendering code so it survives re-renders
+  // (defined below at module scope)
+  useEffect(() => {
+    // cleanup entries for marbles that no longer exist
+    const ids = new Set(marbles.map((mm) => mm.id));
+    for (const k of Object.keys(rotStore)) {
+      const id = Number(k);
+      if (!ids.has(id)) delete rotStore[id];
+    }
+  }, [marbles]);
   return (
     <>
       {marbles.map((m) => {
@@ -62,7 +74,7 @@ export default function BilliardsMarbles({
               const MIN_SPEED = 2; // px/s threshold under which we hide highlight
               const speed = Math.hypot(m.vel.x ?? 0, m.vel.y ?? 0);
               if (speed < MIN_SPEED) return null;
-              const state = rotRef.current[m.id] ?? { angle: 0, lastX: m.pos.x, lastY: m.pos.y };
+              const state = rotStore[m.id] ?? { angle: 0, lastX: m.pos.x, lastY: m.pos.y };
               const dx = m.pos.x - state.lastX;
               const dy = m.pos.y - state.lastY;
               const dist = Math.hypot(dx, dy);
@@ -72,7 +84,7 @@ export default function BilliardsMarbles({
               }
               state.lastX = m.pos.x;
               state.lastY = m.pos.y;
-              rotRef.current[m.id] = state;
+              rotStore[m.id] = state;
               const HIGHLIGHT_DIST = 0.62 * m.radius;
               const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST;
               const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST;
