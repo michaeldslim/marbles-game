@@ -12,7 +12,7 @@ type Props = {
   /** ID of the yellow cue ball */
   yellowBallId: number | null | undefined;
   /** IDs of all red balls (1 for 3-cushion, 2 for 4-ball) */
-  redBallIds: (number | null | undefined)[];
+  // removed: redBallIds no longer required by renderer
   /** ID of the ball that is currently shooting */
   activeCueId: number | null | undefined;
   /** Whether the board is in "ready to shoot" state (shows the active ring) */
@@ -27,7 +27,6 @@ export default function BilliardsMarbles({
   marbles,
   whiteBallId,
   yellowBallId,
-  redBallIds,
   activeCueId,
   isReady,
 }: Props) {
@@ -48,7 +47,6 @@ export default function BilliardsMarbles({
         if (m.captured) return null;
         const isWhite = m.id === whiteBallId;
         const isYellow = m.id === yellowBallId;
-        const isRed = redBallIds.some((id) => id != null && m.id === id);
         const isActiveCue = m.id === activeCueId;
         // No center dot: use a rotating highlight that contrasts with the ball color.
         return (
@@ -71,7 +69,8 @@ export default function BilliardsMarbles({
               strokeWidth={isWhite ? 1.5 : 0}
             />
             {(() => {
-              const MIN_SPEED = 2; // px/s threshold under which we hide highlight
+              // use a radius-relative min speed so tiny/large balls behave consistently
+              const MIN_SPEED = Math.max(0.05 * m.radius, 0.6); // px/s
               const speed = Math.hypot(m.vel.x ?? 0, m.vel.y ?? 0);
               if (speed < MIN_SPEED) return null;
               const state = rotStore[m.id] ?? { angle: 0, lastX: m.pos.x, lastY: m.pos.y };
@@ -88,7 +87,8 @@ export default function BilliardsMarbles({
               const HIGHLIGHT_DIST = 0.62 * m.radius;
               const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST;
               const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST;
-              const hr = Math.max(1.5, m.radius * 0.12);
+              // slightly larger highlight: 18% of radius with 2px minimum for visibility
+              const hr = Math.max(0.18 * m.radius, 2.0);
               // choose highlight color: darker for white, red for yellow, white for others
               const highlightFill = isWhite ? '#888' : isYellow ? '#cc2200' : '#ffffff';
               const highlightOpacity = isWhite ? 0.9 : 0.85;

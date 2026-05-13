@@ -568,7 +568,6 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
               marbles={marbles}
               whiteBallId={playerIdRef.current}
               yellowBallId={yellowIdRef.current}
-              redBallIds={[redBallIdRef.current]}
               activeCueId={turn === 1 ? playerIdRef.current : yellowIdRef.current}
               isReady={billiardReady}
             />

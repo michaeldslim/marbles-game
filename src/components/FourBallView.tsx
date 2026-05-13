@@ -583,7 +583,6 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
               marbles={marbles}
               whiteBallId={playerIdRef.current}
               yellowBallId={yellowIdRef.current}
-              redBallIds={[red1IdRef.current, red2IdRef.current]}
               activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
               isReady={!winner && ready}
             />
