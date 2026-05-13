@@ -244,6 +244,22 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           }}
         />
 
+        {/* ── Trajectory ─────────────────────────────────── */}
+        <Text style={styles.section}>Trajectory  궤적</Text>
+
+        <SettingRow
+          label="Trajectory Length"
+          labelKo="궤적 길이"
+          value={settings.trajectoryLength}
+          min={10} max={120} step={10}
+          format={(v) => `${v} px`}
+          onValueChange={(v) => updateSetting('trajectoryLength', v)}
+          desc={{
+            en: 'Length of the trajectory preview line in pixels.',
+            ko: '궤적 미리보기 선의 길이(픽셀 단위).',
+          }}
+        />
+
         {/* Default values reference */}
         <View style={styles.defaults}>
           <Text style={styles.defaultsTitle}>Default Values  기본값</Text>

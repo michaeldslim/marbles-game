@@ -13,7 +13,12 @@ import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpaci
 import Svg, { Circle, Rect, Ellipse, Polyline, Line } from 'react-native-svg';
 import { Audio } from 'expo-av';
 import { PhysicsEngine, Marble } from '../game/physics';
-import { DEFAULT_PLAYER_POWER, SETTLE_SPEED_THRESHOLD, FOURBALL_SETTLE_FRAMES, FOURBALL_WIN_SCORE } from '../game/constants';
+import { 
+  DEFAULT_PLAYER_POWER, 
+  SETTLE_SPEED_THRESHOLD, 
+  FOURBALL_SETTLE_FRAMES, 
+  FOURBALL_WIN_SCORE, 
+} from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
 
 interface Props {
@@ -584,7 +589,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     let sideSpin = englishMap[englishRef.current];
     const dt = 1 / 60;
     const pts: number[] = [];
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < s.trajectoryLength; i++) {
       px += vx * dt; py += vy * dt;
       vx *= fr; vy *= fr;
       if (px - r < 0) { px = r; const pvx = vx; vx *= -e; if (sideSpin) { vy -= sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
