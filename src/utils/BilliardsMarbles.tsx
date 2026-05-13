@@ -36,7 +36,8 @@ export default function BilliardsMarbles({
         const isYellow = m.id === yellowBallId;
         const isRed = redBallIds.some((id) => id != null && m.id === id);
         const isActiveCue = m.id === activeCueId;
-        const dotColor = isRed ? '#ffffff' : isWhite || isYellow ? '#cc2200' : null;
+        // Show a red center dot only for the white or yellow cue balls.
+        const dotColor = isWhite || isYellow ? '#cc2200' : null;
         return (
           <React.Fragment key={m.id}>
             {isActiveCue && isReady && (
