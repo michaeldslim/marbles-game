@@ -1,5 +1,5 @@
 // Default player power exposed in the UI
-export const DEFAULT_PLAYER_POWER = 6;
+export const DEFAULT_PLAYER_POWER = 5.5;
 // Default power meter oscillation speed (cycles per second)
 export const DEFAULT_CHARGE_CYCLES_PER_SEC = 0.8;
 
