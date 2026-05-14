@@ -1,0 +1,25 @@
+# Ignore local build artifacts and caches to reduce upload size
+node_modules/
+.expo/
+.expo-shared/
+.vscode/
+.idea/
+.DS_Store
+**/build/
+android/.gradle/
+android/app/build/
+android/build/
+ios/build/
+ios/Pods/
+android/.cxx/
+.gradle/
+*.keystore
+*.jks
+dist/
+coverage/
+tmp/
+*.log
+# Keep package files and native folders tracked
+!android/gradle/wrapper/gradle-wrapper.jar
+!android/gradle/wrapper/gradle-wrapper.properties
+!android/gradle/wrapper/gradle-wrapper.lock
