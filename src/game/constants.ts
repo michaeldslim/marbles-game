@@ -33,11 +33,11 @@ export const PILE_MARBLE_FRICTION = 0.9999;
 // ── Shot technique spin constants ───────────────────────────────────────────
 // How much spin (topspin/backspin) shifts the cue ball's post-collision speed.
 // 0 = no effect, 1 = full transfer at launch speed ratio
-export const SPIN_TRANSFER_FACTOR = 0.45;
+export const SPIN_TRANSFER_FACTOR = 0.5;
 
 // How much side-spin (English) deflects the ball off a cushion.
 // Applied as a fraction of the normal speed component.
-export const ENGLISH_FACTOR = 0.32;
+export const ENGLISH_FACTOR = 0.4;
 
 // Per-frame spin decay multiplier (spin dissipates as ball rolls).
 export const SPIN_DECAY = 0.975;

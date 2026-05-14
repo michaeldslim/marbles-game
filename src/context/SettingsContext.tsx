@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Dimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BILLIARDS_BALL_FRICTION,
   FOURBALL_BALL_FRICTION,
@@ -73,14 +74,36 @@ const SettingsContext = createContext<SettingsContextValue>({
   resetSettings: () => {},
 });
 
+const STORAGE_KEY = '@marbles_settings';
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
 
+  // Load persisted settings on mount
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw) as Partial<Settings>;
+        setSettings((prev) => ({ ...prev, ...saved }));
+      } catch {
+        // corrupted data — ignore and use defaults
+      }
+    });
+  }, []);
+
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
-  const resetSettings = () => setSettings({ ...DEFAULT_SETTINGS });
+  const resetSettings = () => {
+    setSettings({ ...DEFAULT_SETTINGS });
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SETTINGS));
+  };
 
   return (
     <SettingsContext.Provider value={{ settings, updateSetting, resetSettings }}>
