@@ -180,10 +180,10 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     const red1 = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.34 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#cc2200', friction: s.friction4B });
     red1IdRef.current = red1.id;
     // Red 2 — lower left
-    const red2 = eng.addMarble({ pos: { x: w * 0.42, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#cc2200', friction: s.friction4B });
+    const red2 = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#cc2200', friction: s.friction4B });
     red2IdRef.current = red2.id;
     // Yellow — lower right
-    const yellow = eng.addMarble({ pos: { x: w * 0.58, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#f4c430', friction: s.friction4B });
+    const yellow = eng.addMarble({ pos: { x: w * 0.64, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: s.ballRadius4B, color: '#f4c430', friction: s.friction4B });
     yellowIdRef.current = yellow.id;
   };
 
@@ -403,8 +403,8 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
     const red2   = eng.marbles.find((m) => m.id === red2IdRef.current);
     if (white)  { white.pos  = { x: w * 0.5,  y: h * 0.18 }; white.vel  = { x: 0, y: 0 }; white.wallHitCount = 0; }
     if (red1)   { red1.pos   = { x: w * 0.5,  y: h * 0.34 }; red1.vel   = { x: 0, y: 0 }; }
-    if (red2)   { red2.pos   = { x: w * 0.42, y: h * 0.72 }; red2.vel   = { x: 0, y: 0 }; }
-    if (yellow) { yellow.pos = { x: w * 0.58, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
+    if (red2)   { red2.pos   = { x: w * 0.5,  y: h * 0.72 }; red2.vel   = { x: 0, y: 0 }; }
+    if (yellow) { yellow.pos = { x: w * 0.64, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
     red1HitRef.current = false;
     red2HitRef.current = false;
     foulRef.current = false;
