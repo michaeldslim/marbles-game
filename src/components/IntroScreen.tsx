@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 
-export type GameMode = 'billiards' | '4ball';
+export type GameMode = 'billiards' | '4ball' | '4ball-ai';
 
 interface Props {
   onSelect: (mode: GameMode) => void;
@@ -37,9 +37,14 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
           <Text style={styles.bold}>all three</Text> object balls in a single shot to score.
           Coming soon!
         </Text>
-        <TouchableOpacity style={[styles.btn, styles.btn4ball]} onPress={() => onSelect('4ball')}>
-          <Text style={styles.btnText}>Play 4-Ball</Text>
-        </TouchableOpacity>
+        <View style={styles.btnRow}>
+          <TouchableOpacity style={[styles.btn, styles.btn4ball, styles.btnFlex]} onPress={() => onSelect('4ball')}>
+            <Text style={styles.btnText}>2 Players</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btn, styles.btnAI, styles.btnFlex]} onPress={() => onSelect('4ball-ai')}>
+            <Text style={styles.btnText}>vs AI 🤖</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -107,6 +112,16 @@ const styles = StyleSheet.create({
   },
   btn4ball: {
     backgroundColor: '#e8a020',
+  },
+  btnAI: {
+    backgroundColor: '#7c3aed',
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  btnFlex: {
+    flex: 1,
   },
   btnText: {
     color: '#fff',
