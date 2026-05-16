@@ -556,17 +556,13 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           <Text style={styles.playerLabel}>🟡 {t(lang, 'player1')}</Text>
           <Text style={styles.scoreNum}>{score1}</Text>
         </View>
-
         <View style={styles.midCol}>
           <Text style={styles.redsLabel}>{t(lang, 'redsLabel')}</Text>
           <Text style={styles.redsNum}>{ballsHit}/2</Text>
-          {lastResult && (
-            <Text style={[styles.resultText, lastResult.startsWith('+') ? styles.hit : styles.miss]}>
-              {lastResult}
-            </Text>
-          )}
+          <Text style={[styles.resultText, lastResult?.startsWith('+') ? styles.hit : styles.miss]}>
+            {lastResult ? lastResult : ''}
+          </Text>
         </View>
-
         <View style={[styles.scoreCard, turn === 'white' && !winner ? styles.activeCard : null]}>
           <Text style={styles.playerLabel}>{vsAI ? '🤖 AI' : '⚪ Player 2'}</Text>
           <Text style={styles.scoreNum}>{score2}</Text>
@@ -740,9 +736,9 @@ const styles = StyleSheet.create({
   scoreNum: { fontSize: 13, fontWeight: '800', color: '#111' },
 
   midCol: { flex: 1, alignItems: 'center' },
-  redsLabel: { fontSize: 8, color: '#555', fontWeight: '600' },
-  redsNum: { fontSize: 13, fontWeight: '800', color: '#111' },
-  resultText: { fontSize: 9, fontWeight: '700', marginTop: 0 },
+  redsLabel: { fontSize: 7, color: '#444', fontWeight: '600' },
+  redsNum: { fontSize: 7, fontWeight: '800', color: '#111' },
+  resultText: { fontSize: 8, fontWeight: '700', marginTop: 0, textAlign: 'center' },
   hit: { color: '#2cc47a' },
   miss: { color: '#e44' },
 

@@ -468,9 +468,9 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         <View style={styles.statsChip}>
           <Text style={styles.statItem}>{t(lang, 'cushions')} <Text style={styles.statVal}>{cushionCount}/3</Text></Text>
           <Text style={styles.statItem}>{t(lang, 'balls')} <Text style={styles.statVal}>{ballsHit}/2</Text></Text>
-          {lastResult && (
-            <Text style={[styles.resultText, lastResult.startsWith('+') ? styles.hit : styles.miss]}>{lastResult}</Text>
-          )}
+          <Text style={[styles.resultText, lastResult?.startsWith('+') ? styles.hit : styles.miss]}>
+            {lastResult ? lastResult : ''}
+          </Text>
         </View>
         <View style={[styles.scoreChip, turn === 2 ? styles.activeChip : null]}>
           <Text style={styles.chipLabel}>{t(lang, 'player2')}</Text>
@@ -628,9 +628,9 @@ const styles = StyleSheet.create({
   chipScore: { fontSize: 13, fontWeight: '800', color: '#111' },
 
   statsChip: { flex: 1, alignItems: 'center', flexDirection: 'column' },
-  statItem: { fontSize: 8, color: '#444', fontWeight: '600' },
+  statItem: { fontSize: 7, color: '#444', fontWeight: '600' },
   statVal: { fontWeight: '800', color: '#111' },
-  resultText: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
+  resultText: { fontSize: 8, fontWeight: '700', textAlign: 'center' },
   hit: { color: '#2cc47a' },
   miss: { color: '#e44' },
 
