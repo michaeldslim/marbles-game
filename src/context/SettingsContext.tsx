@@ -39,6 +39,9 @@ export interface Settings {
   stopDrag: number;           // Linear deceleration to help balls stop sooner
 
   trajectoryLength: number;   // Length of the trajectory preview line in pixels
+  
+  // UI language: 'ko' or 'en'
+  language?: 'ko' | 'en';
 }
 
 const screenW = Dimensions.get('window').width;
@@ -60,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   englishFactor: ENGLISH_FACTOR,
   stopDrag:      STOP_DRAG,
   trajectoryLength: TRAJECTORY_LENGTH,
+  language: 'en',
 };
 
 interface SettingsContextValue {

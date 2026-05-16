@@ -24,6 +24,7 @@ import {
   FOURBALL_WIN_SCORE, 
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
+import { t } from '../i18n';
 
 interface Props {
   onBack: () => void;
@@ -33,6 +34,7 @@ interface Props {
 export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Element {
   const { settings } = useSettings();
   const s = settings; // shorthand
+  const lang = settings.language ?? 'en';
   const vsAIRef = useRef<boolean>(vsAI);
   useEffect(() => { vsAIRef.current = vsAI; }, [vsAI]);
   const [size, setSize] = useState({ w: 360, h: 640 });
@@ -332,7 +334,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                   score2Ref.current = next;
                   setScore2(next);
                 }
-                setLastResult('Foul  −1');
+                setLastResult(t(lang, 'foulMinus'));
                 keepTurn = false;
               } else if (bothReds) {
                 // Score: +1 pt, keep turn
@@ -347,11 +349,11 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                   setScore2(next);
                   if (next >= FOURBALL_WIN_SCORE) setWinner('white');
                 }
-                setLastResult('+1  Both reds!');
+                setLastResult('+1  ' + t(lang, 'bothReds'));
                 keepTurn = true;
               } else {
                 // Miss: lose turn, no penalty
-                setLastResult('Miss');
+                setLastResult(t(lang, 'miss'));
                 keepTurn = false;
               }
 
@@ -538,25 +540,25 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.restartBtn} onPress={restart}>
-          <Text style={styles.restartText}>Restart</Text>
+          <Text style={styles.restartText}>{t(lang, 'restart')}</Text>
         </TouchableOpacity>
         {ready && !winner && (
           <Text style={[styles.turnText, turn === 'yellow' ? styles.yellowTurn : styles.whiteTurn]}>
-            {turn === 'yellow' ? '🟡 Player 1' : vsAI ? '🤖 AI' : '⚪ Player 2'}'s turn
+            {turn === 'yellow' ? `🟡 ${t(lang, 'player1')}` : vsAI ? `🤖 ${t(lang, 'ai')}` : `⚪ ${t(lang, 'player2')}`} {t(lang,'turnSuffix')}
           </Text>
         )}
-        {!ready && !winner && <Text style={styles.shotText}>Shot…</Text>}
+        {!ready && !winner && <Text style={styles.shotText}>{t(lang, 'shot')}</Text>}
       </View>
 
       {/* Scoreboard */}
       <View style={styles.scoreRow}>
         <View style={[styles.scoreCard, turn === 'yellow' && !winner ? styles.activeCard : null]}>
-          <Text style={styles.playerLabel}>🟡 Player 1</Text>
+          <Text style={styles.playerLabel}>🟡 {t(lang, 'player1')}</Text>
           <Text style={styles.scoreNum}>{score1}</Text>
         </View>
 
         <View style={styles.midCol}>
-          <Text style={styles.redsLabel}>Reds hit</Text>
+          <Text style={styles.redsLabel}>{t(lang, 'redsLabel')}</Text>
           <Text style={styles.redsNum}>{ballsHit}/2</Text>
           {lastResult && (
             <Text style={[styles.resultText, lastResult.startsWith('+') ? styles.hit : styles.miss]}>
@@ -575,10 +577,10 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       {winner && (
         <View style={styles.winBanner}>
           <Text style={styles.winText}>
-            {winner === 'yellow' ? '🟡 Player 1 wins!' : vsAI ? '🤖 AI wins!' : '⚪ Player 2 wins!'}
+            {winner === 'yellow' ? `🟡 ${t(lang, 'player1')} ${t(lang, 'playAgain')}` : vsAI ? `🤖 ${t(lang, 'ai')} ${t(lang, 'playAgain')}` : `⚪ ${t(lang, 'player2')} ${t(lang, 'playAgain')}`}
           </Text>
           <TouchableOpacity style={styles.playAgainBtn} onPress={restart}>
-            <Text style={styles.playAgainText}>Play Again</Text>
+            <Text style={styles.playAgainText}>{t(lang, 'playAgain')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -588,12 +590,12 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         <View style={styles.techRow}>
           {vsAI && turn === 'white' ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: '#aaa', fontSize: 13, fontWeight: '700' }}>🤖 AI 생각 중…</Text>
+              <Text style={{ color: '#aaa', fontSize: 13, fontWeight: '700' }}>🤖 {t(lang, 'aiThinking')}</Text>
             </View>
           ) : charging ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
               <View style={styles.powerMeterInner}>
-                <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
+                <Text style={styles.powerMeterLabel}>{t(lang, 'tapToShoot')}</Text>
                 <View style={styles.powerMeterTrack}>
                   <View style={[styles.powerMeterFill, {
                     width: `${Math.round(chargePower * 100)}%` as any,
@@ -637,7 +639,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                       setPickerContact({ x: nx * s, y: ny * s });
                     }}
                   >
-                    <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
+                    <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{settings.language === 'ko' ? label : sub}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -661,7 +663,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                       setPickerContact({ x: nx * s, y: ny * s });
                     }}
                   >
-                    <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
+                    <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{settings.language === 'ko' ? label : sub}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

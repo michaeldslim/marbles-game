@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useSettings } from '../context/SettingsContext';
+import { t } from '../i18n';
 
 export type GameMode = 'billiards' | '4ball' | '4ball-ai';
 
@@ -9,40 +11,34 @@ interface Props {
 }
 
 export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Element {
+  const { settings } = useSettings();
+  const lang = settings.language ?? 'en';
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Choose Your Game</Text>
+        <Text style={styles.title}>{t(lang, 'chooseGameTitle')}</Text>
         <TouchableOpacity style={styles.settingsBtn} onPress={onSettings}>
           <Text style={styles.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>🎱 3-Cushion Billiards</Text>
-        <Text style={styles.cardDesc}>
-          Strike your white cue ball so it contacts at least{' '}
-          <Text style={styles.bold}>3 cushions</Text> (rails) and hits{' '}
-          <Text style={styles.bold}>both</Text> the yellow and red balls in a single shot to score.
-        </Text>
+        <Text style={styles.cardTitle}>🎱 {t(lang, 'play3C')}</Text>
+        <Text style={styles.cardDesc}>{t(lang, 'cardDescBilliards')}</Text>
         <TouchableOpacity style={[styles.btn, styles.btnBilliards]} onPress={() => onSelect('billiards')}>
-          <Text style={styles.btnText}>Play 3-Cushion</Text>
+          <Text style={styles.btnText}>{t(lang, 'play3C')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>🟡 4-Ball Billiards</Text>
-        <Text style={styles.cardDesc}>
-          Strike your cue ball to hit{' '}
-          <Text style={styles.bold}>all three</Text> object balls in a single shot to score.
-          Coming soon!
-        </Text>
+        <Text style={styles.cardTitle}>🟡 4-Ball</Text>
+        <Text style={styles.cardDesc}>{t(lang, 'cardDesc4Ball')}</Text>
         <View style={styles.btnRow}>
           <TouchableOpacity style={[styles.btn, styles.btn4ball, styles.btnFlex]} onPress={() => onSelect('4ball')}>
-            <Text style={styles.btnText}>2 Players</Text>
+            <Text style={styles.btnText}>{t(lang, 'play4B_2p')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnAI, styles.btnFlex]} onPress={() => onSelect('4ball-ai')}>
-            <Text style={styles.btnText}>vs AI 🤖</Text>
+            <Text style={styles.btnText}>{t(lang, 'play4B_ai')} 🤖</Text>
           </TouchableOpacity>
         </View>
       </View>

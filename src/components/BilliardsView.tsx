@@ -23,6 +23,7 @@ import {
   BILLIARDS_SETTLE_FRAMES, 
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
+import { t } from '../i18n';
 
 interface Props {
   onBack: () => void;
@@ -31,6 +32,7 @@ interface Props {
 export default function BilliardsView({ onBack }: Props): JSX.Element {
   const { settings } = useSettings();
   const s = settings; // shorthand
+  const lang = settings.language ?? 'en';
   const [size, setSize] = useState({ w: 360, h: 640 });
   const [marbles, setMarbles] = useState<Marble[]>([]);
   const [score1, setScore1] = useState<number>(0);
@@ -240,7 +242,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
 
               let keepTurn = false;
               if (breakFoul) {
-                setLastResult('Foul – miss turn');
+                setLastResult(t(lang, 'foulMiss'));
                 keepTurn = false;
               } else if (bothHit && validCushions) {
                 if (turnRef.current === 1) {
@@ -248,10 +250,10 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
                 } else {
                   const n = score2Ref.current + 1; score2Ref.current = n; setScore2(n);
                 }
-                setLastResult('+1');
+                setLastResult(t(lang, 'plus1'));
                 keepTurn = true;
               } else {
-                setLastResult('Miss');
+                setLastResult(t(lang, 'miss'));
                 keepTurn = false;
               }
 
@@ -446,32 +448,32 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.restartBtn} onPress={restart}>
-          <Text style={styles.restartText}>Restart</Text>
+          <Text style={styles.restartText}>{t(lang, 'restart')}</Text>
         </TouchableOpacity>
         {billiardReady ? (
           <Text style={styles.turnText}>
-            {turn === 1 ? '⚪ Player 1' : '🟡 Player 2'}'s turn
+            {turn === 1 ? `⚪ ${t(lang, 'player1')}` : `🟡 ${t(lang, 'player2')}`} {t(lang,'turnSuffix')}
           </Text>
         ) : (
-          <Text style={styles.shotText}>Shot…</Text>
+          <Text style={styles.shotText}>{t(lang, 'shot')}</Text>
         )}
       </View>
 
       {/* Scoreboard — compact single row */}
       <View style={styles.scoreRow}>
         <View style={[styles.scoreChip, turn === 1 ? styles.activeChip : null]}>
-          <Text style={styles.chipLabel}>Player 1</Text>
+          <Text style={styles.chipLabel}>{t(lang, 'player1')}</Text>
           <Text style={styles.chipScore}>{score1}</Text>
         </View>
         <View style={styles.statsChip}>
-          <Text style={styles.statItem}>Cushions <Text style={styles.statVal}>{cushionCount}/3</Text></Text>
-          <Text style={styles.statItem}>Balls <Text style={styles.statVal}>{ballsHit}/2</Text></Text>
+          <Text style={styles.statItem}>{t(lang, 'cushions')} <Text style={styles.statVal}>{cushionCount}/3</Text></Text>
+          <Text style={styles.statItem}>{t(lang, 'balls')} <Text style={styles.statVal}>{ballsHit}/2</Text></Text>
           {lastResult && (
             <Text style={[styles.resultText, lastResult.startsWith('+') ? styles.hit : styles.miss]}>{lastResult}</Text>
           )}
         </View>
         <View style={[styles.scoreChip, turn === 2 ? styles.activeChip : null]}>
-          <Text style={styles.chipLabel}>Player 2</Text>
+          <Text style={styles.chipLabel}>{t(lang, 'player2')}</Text>
           <Text style={styles.chipScore}>{score2}</Text>
         </View>
       </View>
@@ -481,7 +483,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
         {charging ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
             <View style={styles.powerMeterInner}>
-              <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
+              <Text style={styles.powerMeterLabel}>{t(lang, 'tapToShoot')}</Text>
               <View style={styles.powerMeterTrack}>
                 <View style={[styles.powerMeterFill, {
                   width: `${Math.round(chargePower * 100)}%` as any,
@@ -526,7 +528,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
                     setPickerContact({ x: nx * s, y: ny * s });
                   }}
                 >
-                  <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{label}</Text>
+                  <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{settings.language === 'ko' ? label : sub}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -551,7 +553,7 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
                     setPickerContact({ x: nx * s, y: ny * s });
                   }}
                 >
-                  <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{label}</Text>
+                  <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{settings.language === 'ko' ? label : sub}</Text>
                 </TouchableOpacity>
               ))}
             </View>

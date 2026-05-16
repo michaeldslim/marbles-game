@@ -25,11 +25,15 @@ function SettingRow({
 }) {
   const [showDesc, setShowDesc] = useState(false);
   const display = format ? format(value) : String(Math.round(value * 100) / 100);
+  const { settings } = useSettings();
+  const lang = settings.language ?? 'en';
+  const displayLabel = lang === 'ko' ? labelKo : label;
+  const displayDesc = desc ? (lang === 'ko' ? desc.ko : desc.en) : undefined;
   return (
     <View style={styles.row}>
       <View style={styles.rowHeader}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={styles.rowLabelKo}>{labelKo}</Text>
+        <Text style={styles.rowLabel}>{displayLabel}</Text>
+        {lang === 'ko' ? null : <Text style={styles.rowLabelKo}>{''}</Text>}
         {desc && (
           <TouchableOpacity style={styles.helpBtn} onPress={() => setShowDesc(v => !v)}>
             <Text style={styles.helpBtnText}>{showDesc ? '✕' : '?'}</Text>
@@ -37,10 +41,9 @@ function SettingRow({
         )}
         <Text style={styles.rowValue}>{display}</Text>
       </View>
-      {showDesc && desc && (
+      {showDesc && displayDesc && (
         <View style={styles.descBox}>
-          <Text style={styles.descEn}>{desc.en}</Text>
-          <Text style={styles.descKo}>{desc.ko}</Text>
+          <Text style={styles.descEn}>{displayDesc}</Text>
         </View>
       )}
       <Slider
@@ -72,9 +75,25 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Settings  설정</Text>
+        <Text style={styles.title}>{settings.language === 'ko' ? '설정' : 'Settings'}</Text>
         <TouchableOpacity style={styles.resetBtn} onPress={resetSettings}>
-          <Text style={styles.resetText}>Reset  초기화</Text>
+          <Text style={styles.resetText}>{settings.language === 'ko' ? '초기화' : 'Reset'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Language toggle */}
+      <View style={{ padding: 12, flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+        <TouchableOpacity
+          style={[styles.langBtn, settings.language === 'en' ? styles.langActive : null]}
+          onPress={() => updateSetting('language', 'en')}
+        >
+          <Text style={{ color: settings.language === 'en' ? '#fff' : '#1b4332', fontWeight: '700' }}>EN</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.langBtn, settings.language === 'ko' ? styles.langActive : null]}
+          onPress={() => updateSetting('language', 'ko')}
+        >
+          <Text style={{ color: settings.language === 'ko' ? '#fff' : '#1b4332', fontWeight: '700' }}>KO</Text>
         </TouchableOpacity>
       </View>
 
@@ -336,4 +355,8 @@ const styles = StyleSheet.create({
   defaultsTitle: { fontSize: 12, fontWeight: '700', color: '#555', marginBottom: 8 },
   defaultItem: { fontSize: 11, color: '#666', marginBottom: 2 },
   defaultVal: { fontWeight: '700', color: '#333' },
+  langBtn: {
+    width: 68, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e8e8e8',
+  },
+  langActive: { backgroundColor: '#1b4332' },
 });
