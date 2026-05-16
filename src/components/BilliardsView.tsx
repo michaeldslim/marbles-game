@@ -535,9 +535,9 @@ export default function BilliardsView({ onBack }: Props): JSX.Element {
             {/* English row */}
             <View style={styles.techGroup}>
               {([
-                { key: 'left',  label: '왼회전', sub: '← Eng' },
-                { key: 'none',  label: '무회전', sub: 'Center' },
-                { key: 'right', label: '오른회전', sub: 'Eng →' },
+                { key: 'left',  label: '왼회전', sub: 'Left Eng' },
+                { key: 'none',  label: '무회전', sub: 'No Eng' },
+                { key: 'right', label: '오른회전', sub: 'Right Eng' },
               ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
                 <TouchableOpacity
                   key={key}
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   statusText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   turnText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center', color: '#2cc47a' },
   readyText: { color: '#2cc47a' },
-  shotText: { color: '#f4a020' },
+  shotText: { flex: 1, fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
 
   scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
   scoreChip: {

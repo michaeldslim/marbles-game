@@ -645,9 +645,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               </View>
               <View style={styles.techGroup}>
                 {([
-                  { key: 'left',  label: '왼회전',   sub: '← Eng' },
-                  { key: 'none',  label: '무회전',   sub: 'Center' },
-                  { key: 'right', label: '오른회전', sub: 'Eng →' },
+                  { key: 'left',  label: '왼회전', sub: 'Left Eng' },
+                  { key: 'none',  label: '무회전', sub: 'No Eng' },
+                  { key: 'right', label: '오른회전', sub: 'Right Eng' },
                 ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
                   <TouchableOpacity
                     key={key}

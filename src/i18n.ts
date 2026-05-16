@@ -31,10 +31,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   },
   ko: {
   plus1: '+1',
-  foulMiss: '파울 — 턴 종료',
+  foulMiss: '파울 — 차례 종료',
   cushions: '쿠션',
   balls: '공',
-  turnSuffix: '의 턴',
+  turnSuffix: '의 차례',
   cardDescBilliards: '내 공이 두 목표구를 모두 맞히고 총 쿠션 접촉이 3회 이상이어야 합니다. 단, 3번째 쿠션은 마지막 목표구보다 먼저여야 합니다.',
   cardDesc4Ball: '내 공이 빨간 공 두 개를 모두 맞히면 득점합니다(순서·쿠션 무관).',
     chooseGameTitle: '게임을 선택하세요',
