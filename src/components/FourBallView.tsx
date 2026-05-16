@@ -27,11 +27,14 @@ import { useSettings } from '../context/SettingsContext';
 
 interface Props {
   onBack: () => void;
+  vsAI?: boolean;
 }
 
-export default function FourBallView({ onBack }: Props): JSX.Element {
+export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Element {
   const { settings } = useSettings();
   const s = settings; // shorthand
+  const vsAIRef = useRef<boolean>(vsAI);
+  useEffect(() => { vsAIRef.current = vsAI; }, [vsAI]);
   const [size, setSize] = useState({ w: 360, h: 640 });
   const [marbles, setMarbles] = useState<Marble[]>([]);
 
@@ -169,6 +172,59 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
   }, []);
 
   useEffect(() => { powerRef.current = power; }, [power]);
+
+  // AI shot: fires when it's white's turn in vsAI mode
+  useEffect(() => {
+    if (!vsAI || turn !== 'white' || !ready || !!winner) return;
+    const timeoutId = setTimeout(() => {
+      const eng = engineRef.current;
+      const cueId = playerIdRef.current;
+      if (!eng || cueId == null) return;
+      const cue  = eng.marbles.find((m) => m.id === cueId);
+      const red1 = eng.marbles.find((m) => m.id === red1IdRef.current);
+      const red2 = eng.marbles.find((m) => m.id === red2IdRef.current);
+      if (!cue || !red1 || !red2) return;
+
+      // Pick the closer red as the primary target, the other as secondary
+      const d1 = Math.hypot(red1.pos.x - cue.pos.x, red1.pos.y - cue.pos.y);
+      const d2 = Math.hypot(red2.pos.x - cue.pos.x, red2.pos.y - cue.pos.y);
+      const [primary, secondary] = d1 <= d2 ? [red1, red2] : [red2, red1];
+
+      // Ghost-ball aim: offset toward the secondary so the cue ball
+      // deflects in that direction after contact with the primary.
+      const secAngle = Math.atan2(
+        secondary.pos.y - primary.pos.y,
+        secondary.pos.x - primary.pos.x,
+      );
+      const offset = primary.radius * 0.55; // how far to shift the aim point
+      const aimX = primary.pos.x - Math.cos(secAngle) * offset;
+      const aimY = primary.pos.y - Math.sin(secAngle) * offset;
+
+      let dx = aimX - cue.pos.x;
+      let dy = aimY - cue.pos.y;
+
+      // Small random spread so AI isn't perfect (±~10°)
+      const spread = (Math.random() - 0.5) * 0.35;
+      const cos = Math.cos(spread);
+      const sin = Math.sin(spread);
+      const rdx = dx * cos - dy * sin;
+      const rdy = dx * sin + dy * cos;
+
+      const mag = Math.hypot(rdx, rdy);
+      // Distance-based power: farther target → hit harder (60–90%)
+      const distFactor = Math.min(mag / (eng.height * 0.6), 1);
+      const power = 0.6 + distFactor * 0.3;
+      const speed = s.launchSpeed4B * powerRef.current * power;
+
+      cue.spin = 0;
+      cue.sideSpin = 0;
+      eng.launchMarble(cueId, { x: (rdx / mag) * speed, y: (rdy / mag) * speed });
+      shotActiveRef.current = true;
+      setReady(false);
+      readyRef.current = false;
+    }, 900);
+    return () => clearTimeout(timeoutId);
+  }, [turn, ready, winner, vsAI]);
 
   const setupBalls = (eng: PhysicsEngine) => {
     const w = eng.width;
@@ -333,7 +389,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
 
   const pan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !(vsAIRef.current && turnRef.current === 'white'),
       onPanResponderGrant: (evt) => {
         // During charging: this tap fires the ball at current power
         if (chargingRef.current) {
@@ -450,7 +506,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         </TouchableOpacity>
         {ready && !winner && (
           <Text style={[styles.turnText, turn === 'yellow' ? styles.yellowTurn : styles.whiteTurn]}>
-            {turn === 'yellow' ? '🟡 Player 1' : '⚪ Player 2'}'s turn
+            {turn === 'yellow' ? '🟡 Player 1' : vsAI ? '🤖 AI' : '⚪ Player 2'}'s turn
           </Text>
         )}
         {!ready && !winner && <Text style={styles.shotText}>Shot…</Text>}
@@ -474,7 +530,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
         </View>
 
         <View style={[styles.scoreCard, turn === 'white' && !winner ? styles.activeCard : null]}>
-          <Text style={styles.playerLabel}>⚪ Player 2</Text>
+          <Text style={styles.playerLabel}>{vsAI ? '🤖 AI' : '⚪ Player 2'}</Text>
           <Text style={styles.scoreNum}>{score2}</Text>
         </View>
       </View>
@@ -483,7 +539,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
       {winner && (
         <View style={styles.winBanner}>
           <Text style={styles.winText}>
-            {winner === 'yellow' ? '🟡 Player 1 wins!' : '⚪ Player 2 wins!'}
+            {winner === 'yellow' ? '🟡 Player 1 wins!' : vsAI ? '🤖 AI wins!' : '⚪ Player 2 wins!'}
           </Text>
           <TouchableOpacity style={styles.playAgainBtn} onPress={restart}>
             <Text style={styles.playAgainText}>Play Again</Text>
@@ -494,7 +550,11 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
       {/* Shot technique selector / Power charge meter — same fixed slot */}
       {!winner && (
         <View style={styles.techRow}>
-          {charging ? (
+          {vsAI && turn === 'white' ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#aaa', fontSize: 13, fontWeight: '700' }}>🤖 AI 생각 중…</Text>
+            </View>
+          ) : charging ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
               <View style={styles.powerMeterInner}>
                 <Text style={styles.powerMeterLabel}>TAP TO SHOOT  탭하여 발사</Text>
@@ -608,7 +668,7 @@ export default function FourBallView({ onBack }: Props): JSX.Element {
             activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
           />
           <PickerOverlay
-            visible={!winner && ready}
+            visible={!winner && ready && !(vsAI && turn === 'white')}
             pickerContact={pickerContact}
             pickerPos={pickerPos}
             boardWidth={size.w}
