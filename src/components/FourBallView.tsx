@@ -189,40 +189,76 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       const d1 = Math.hypot(red1.pos.x - cue.pos.x, red1.pos.y - cue.pos.y);
       const d2 = Math.hypot(red2.pos.x - cue.pos.x, red2.pos.y - cue.pos.y);
       const [primary, secondary] = d1 <= d2 ? [red1, red2] : [red2, red1];
+      const primaryDist = d1 <= d2 ? d1 : d2;
 
-      // Ghost-ball aim: offset toward the secondary so the cue ball
-      // deflects in that direction after contact with the primary.
-      const secAngle = Math.atan2(
-        secondary.pos.y - primary.pos.y,
-        secondary.pos.x - primary.pos.x,
-      );
-      const offset = primary.radius * 0.55; // how far to shift the aim point
-      const aimX = primary.pos.x - Math.cos(secAngle) * offset;
-      const aimY = primary.pos.y - Math.sin(secAngle) * offset;
+      // Unit vectors
+      const cueToPrimN = { x: (primary.pos.x - cue.pos.x) / primaryDist, y: (primary.pos.y - cue.pos.y) / primaryDist };
+      const primToSec = { x: secondary.pos.x - primary.pos.x, y: secondary.pos.y - primary.pos.y };
+      const primToSecMag = Math.hypot(primToSec.x, primToSec.y);
+      const primToSecN = { x: primToSec.x / primToSecMag, y: primToSec.y / primToSecMag };
 
-      let dx = aimX - cue.pos.x;
-      let dy = aimY - cue.pos.y;
+      // alignment > 0: secondary is roughly in the same direction as primary from cue
+      const alignment = cueToPrimN.x * primToSecN.x + cueToPrimN.y * primToSecN.y;
 
-      // Small random spread so AI isn't perfect (±~10°)
-      const spread = (Math.random() - 0.5) * 0.35;
-      const cos = Math.cos(spread);
-      const sin = Math.sin(spread);
-      const rdx = dx * cos - dy * sin;
-      const rdy = dx * sin + dy * cos;
+      let dx: number;
+      let dy: number;
+      let spinVal: number;
+
+      if (alignment > 0.5) {
+        // ── Follow shot: secondary is roughly behind primary → shoot through with topspin
+        dx = primary.pos.x - cue.pos.x;
+        dy = primary.pos.y - cue.pos.y;
+        spinVal = 0.65;
+      } else {
+        // ── Ghost-ball cut shot: aim so the cue deflects toward secondary after stop contact
+        // Contact normal ⊥ primToSecN; two candidates (left / right side of primary)
+        const contactDist = primary.radius + cue.radius;
+        const nA = { x: -primToSecN.y, y:  primToSecN.x };
+        const nB = { x:  primToSecN.y, y: -primToSecN.x };
+        const ghostA = { x: primary.pos.x + nA.x * contactDist, y: primary.pos.y + nA.y * contactDist };
+        const ghostB = { x: primary.pos.x + nB.x * contactDist, y: primary.pos.y + nB.y * contactDist };
+
+        // Score each ghost: positive means cue's post-contact tangential velocity points toward secondary
+        const scoreGhost = (g: { x: number; y: number }) => {
+          const toG = { x: g.x - cue.pos.x, y: g.y - cue.pos.y };
+          const toGMag = Math.hypot(toG.x, toG.y);
+          const toGN = { x: toG.x / toGMag, y: toG.y / toGMag };
+          const cn = { x: (g.x - primary.pos.x) / contactDist, y: (g.y - primary.pos.y) / contactDist };
+          const proj = toGN.x * cn.x + toGN.y * cn.y;
+          // tangential component of shot direction (what the cue retains after stop contact)
+          return (toGN.x - proj * cn.x) * primToSecN.x + (toGN.y - proj * cn.y) * primToSecN.y;
+        };
+
+        const ghost = scoreGhost(ghostA) >= scoreGhost(ghostB) ? ghostA : ghostB;
+        const m = cue.radius * 2;
+        const inBounds = ghost.x > m && ghost.x < eng.width - m && ghost.y > m && ghost.y < eng.height - m;
+
+        dx = inBounds ? ghost.x - cue.pos.x : primary.pos.x - cue.pos.x;
+        dy = inBounds ? ghost.y - cue.pos.y : primary.pos.y - cue.pos.y;
+        spinVal = 0; // stop shot — preserves the deflection angle
+      }
+
+      // Small random spread: tighter for cut shots (precision matters more)
+      const spreadRange = alignment > 0.5 ? 0.32 : 0.22;
+      const spread = (Math.random() - 0.5) * spreadRange;
+      const cosS = Math.cos(spread);
+      const sinS = Math.sin(spread);
+      const rdx = dx * cosS - dy * sinS;
+      const rdy = dx * sinS + dy * cosS;
 
       const mag = Math.hypot(rdx, rdy);
-      // Distance-based power: farther target → hit harder (60–90%)
-      const distFactor = Math.min(mag / (eng.height * 0.6), 1);
+      // Distance-based power using primary distance (60–90%)
+      const distFactor = Math.min(primaryDist / (eng.height * 0.6), 1);
       const power = 0.6 + distFactor * 0.3;
       const speed = s.launchSpeed4B * powerRef.current * power;
 
-      cue.spin = 0;
+      cue.spin = spinVal;
       cue.sideSpin = 0;
       eng.launchMarble(cueId, { x: (rdx / mag) * speed, y: (rdy / mag) * speed });
       shotActiveRef.current = true;
       setReady(false);
       readyRef.current = false;
-    }, 900);
+    }, 600 + Math.random() * 700); // 600–1300ms random delay
     return () => clearTimeout(timeoutId);
   }, [turn, ready, winner, vsAI]);
 
