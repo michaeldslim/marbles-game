@@ -260,6 +260,11 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       shotActiveRef.current = true;
       setReady(false);
       readyRef.current = false;
+      // Reset picker to default (스톱샷 + 무회전)
+      pickerContactRef.current = { x: 0, y: 0 };
+      setPickerContact({ x: 0, y: 0 });
+      shotTypeRef.current = 'stop'; setShotType('stop');
+      englishRef.current = 'none'; setEnglish('none');
     }, 600 + Math.random() * 700); // 600–1300ms random delay
     return () => clearTimeout(timeoutId);
   }, [turn, ready, winner, vsAI]);
@@ -450,6 +455,11 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           chargePowerRef.current = 0;
           setChargePower(0);
           chargeDirectionRef.current = null;
+          // Reset picker to default (스톱샷 + 무회전)
+          pickerContactRef.current = { x: 0, y: 0 };
+          setPickerContact({ x: 0, y: 0 });
+          shotTypeRef.current = 'stop'; setShotType('stop');
+          englishRef.current = 'none'; setEnglish('none');
           return;
         }
         // Normal aim setup
