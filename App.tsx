@@ -12,7 +12,7 @@ export default function App(): JSX.Element {
 
   const renderContent = () => {
     if (showSettings) return <SettingsScreen onBack={() => setShowSettings(false)} />;
-    if (gameMode === 'billiards') return <BilliardsView onBack={() => setGameMode(null)} />;
+    if (gameMode === 'billiards' || gameMode === 'billiards-ai') return <BilliardsView vsAI={gameMode === 'billiards-ai'} onBack={() => setGameMode(null)} />;
     if (gameMode === '4ball' || gameMode === '4ball-ai') return <FourBallView vsAI={gameMode === '4ball-ai'} onBack={() => setGameMode(null)} />;
     return <IntroScreen onSelect={setGameMode} onSettings={() => setShowSettings(true)} />;
   };
