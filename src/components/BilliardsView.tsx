@@ -174,10 +174,13 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     const w = eng.width;
     const h = eng.height;
     const r = s.ballRadius3C;
-    const cue = eng.addMarble({ pos: { x: w * 0.56, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: s.friction3C });
+
+    const cue = eng.addMarble({ pos: { x: w * 0.66, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f0f0f0', friction: s.friction3C });
     playerIdRef.current = cue.id;
-    const yellow = eng.addMarble({ pos: { x: w * 0.44, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: s.friction3C });
+
+    const yellow = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.72 }, vel: { x: 0, y: 0 }, radius: r, color: '#f4c430', friction: s.friction3C });
     yellowIdRef.current = yellow.id;
+    
     const redBall = eng.addMarble({ pos: { x: w * 0.5, y: h * 0.3 }, vel: { x: 0, y: 0 }, radius: r, color: '#cc2200', friction: s.friction3C });
     redBallIdRef.current = redBall.id;
   };
@@ -523,8 +526,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     const cue    = eng.marbles.find((m) => m.id === playerIdRef.current);
     const yellow = eng.marbles.find((m) => m.id === yellowIdRef.current);
     const red    = eng.marbles.find((m) => m.id === redBallIdRef.current);
-    if (cue)    { cue.pos    = { x: w * 0.56, y: h * 0.72 }; cue.vel    = { x: 0, y: 0 }; cue.wallHitCount = 0; }
-    if (yellow) { yellow.pos = { x: w * 0.44, y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
+    if (cue)    { cue.pos    = { x: w * 0.66, y: h * 0.72 }; cue.vel    = { x: 0, y: 0 }; cue.wallHitCount = 0; }
+    if (yellow) { yellow.pos = { x: w * 0.5,  y: h * 0.72 }; yellow.vel = { x: 0, y: 0 }; }
     if (red)    { red.pos    = { x: w * 0.5,  y: h * 0.3  }; red.vel    = { x: 0, y: 0 }; }
     yellowHitRef.current = false;
     redBallHitRef.current = false;
