@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
 
-export type GameMode = 'billiards' | '4ball' | '4ball-ai';
+export type GameMode = 'billiards' | 'billiards-ai' | '4ball' | '4ball-ai';
 
 interface Props {
   onSelect: (mode: GameMode) => void;
@@ -25,9 +25,14 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🎱 {t(lang, 'play3C')}</Text>
         <Text style={styles.cardDesc}>{t(lang, 'cardDescBilliards')}</Text>
-        <TouchableOpacity style={[styles.btn, styles.btnBilliards]} onPress={() => onSelect('billiards')}>
-          <Text style={styles.btnText}>{t(lang, 'play3C')}</Text>
-        </TouchableOpacity>
+        <View style={styles.btnRow}>
+          <TouchableOpacity style={[styles.btn, styles.btnBilliards, styles.btnFlex]} onPress={() => onSelect('billiards')}>
+            <Text style={styles.btnText}>{t(lang, 'play3C_2p')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btn, styles.btnAI, styles.btnFlex]} onPress={() => onSelect('billiards-ai')}>
+            <Text style={styles.btnText}>{t(lang, 'play3C_ai')} 🤖</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.card}>
