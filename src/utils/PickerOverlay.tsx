@@ -42,7 +42,9 @@ export default function PickerOverlay({
   const pos = pickerPos ?? { x: boardWidth - SIZE - 12, y: 130 };
 
   return (
-    <View style={{ position: 'absolute', top: pos.y, left: pos.x, width: SIZE, height: SIZE + HANDLE_H }}>
+    <View style={{ position: 'absolute', top: pos.y, left: pos.x, width: SIZE, height: SIZE + HANDLE_H }}
+      pointerEvents="box-none"
+    >
       {/* Drag handle */}
       <View
         style={{
