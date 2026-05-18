@@ -445,7 +445,11 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     const desiredBoardW = desiredBoardH / 2;
 
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(desiredBoardW, desiredBoardH);
+      // account for inner border stroke: inset = 6px margin + half stroke (10/2 =5)
+      const INSET = 11; // 6 + 5
+      const innerW = Math.max(4, desiredBoardW - INSET * 2);
+      const innerH = Math.max(4, desiredBoardH - INSET * 2);
+      const eng = new PhysicsEngine(innerW, innerH);
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
@@ -460,7 +464,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       return;
     }
     const eng = engineRef.current;
-    if (eng) { eng.width = desiredBoardW; eng.height = desiredBoardH; }
+    if (eng) { const INSET = 11; eng.width = Math.max(4, desiredBoardW - INSET * 2); eng.height = Math.max(4, desiredBoardH - INSET * 2); }
   };
 
   const pan = useRef(
@@ -713,6 +717,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               yellowBallId={yellowIdRef.current}
               activeCueId={turn === 1 ? playerIdRef.current : yellowIdRef.current}
               isReady={billiardReady}
+              offsetX={11}
+              offsetY={11}
             />
             <TrajectoryLine
               aim={aimingRef.current}
@@ -725,6 +731,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               chargePower={chargePowerRef.current}
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
+              offsetX={11}
+              offsetY={11}
             />
           </Svg>
           <MagnifierOverlay
@@ -733,6 +741,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             chargeDirection={chargeDirectionRef.current}
             engine={engineRef.current}
             activeCueId={turn === 1 ? playerIdRef.current : yellowIdRef.current}
+            offsetX={11}
+            offsetY={11}
           />
           <PickerOverlay
             visible={billiardReady && !(vsAI && turn === 2)}

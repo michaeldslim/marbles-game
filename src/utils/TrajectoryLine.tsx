@@ -24,6 +24,8 @@ type Props = {
   trajectoryLength: number;
   /** When true, nothing is rendered (e.g. winner declared) */
   disabled?: boolean;
+  offsetX?: number;
+  offsetY?: number;
 };
 
 /**
@@ -42,6 +44,8 @@ export default function TrajectoryLine({
   english,
   trajectoryLength,
   disabled,
+  offsetX = 0,
+  offsetY = 0,
 }: Props) {
   if (!eng || disabled || activeCueId == null) return null;
   if (!aim && !charging) return null;
@@ -81,7 +85,7 @@ export default function TrajectoryLine({
     if (px + r > eng.width) { px = eng.width - r; const pvx = vx; vx *= -e; if (sideSpin) { vy += sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
     if (py - r < 0) { py = r; const pvy = vy; vy *= -e; if (sideSpin) { vx += sideSpin * ef * Math.abs(pvy); sideSpin *= scr; } }
     if (py + r > eng.height) { py = eng.height - r; const pvy = vy; vy *= -e; if (sideSpin) { vx -= sideSpin * ef * Math.abs(pvy); sideSpin *= scr; } }
-    pts.push(px, py);
+    pts.push(px + offsetX, py + offsetY);
   }
   return (
     <Polyline

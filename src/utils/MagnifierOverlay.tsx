@@ -13,6 +13,8 @@ type Props = {
   engine: PhysicsEngine | null;
   /** ID of the currently shooting cue ball */
   activeCueId: number | null | undefined;
+  offsetX?: number;
+  offsetY?: number;
 };
 
 /**
@@ -25,6 +27,8 @@ export default function MagnifierOverlay({
   chargeDirection,
   engine: eng,
   activeCueId,
+  offsetX = 0,
+  offsetY = 0,
 }: Props) {
   if (!eng || activeCueId == null) return null;
   if (!aim && !charging) return null;
@@ -97,7 +101,7 @@ export default function MagnifierOverlay({
         {eng.marbles.filter((m) => !m.captured).map((m) => (
           <Circle
             key={m.id}
-            cx={m.pos.x} cy={m.pos.y} r={m.radius}
+            cx={m.pos.x + offsetX} cy={m.pos.y + offsetY} r={m.radius}
             fill={m.color || '#fff'}
             stroke={m.id === activeCueId ? '#999' : 'none'}
             strokeWidth={1.5}
@@ -105,7 +109,7 @@ export default function MagnifierOverlay({
         ))}
         {/* Ghost cue ball at collision position */}
         <Circle
-          cx={collX} cy={collY} r={active.radius}
+          cx={collX + offsetX} cy={collY + offsetY} r={active.radius}
           fill={active.color || '#fff'}
           opacity={0.5}
           stroke="#fff" strokeWidth={1}
@@ -113,13 +117,13 @@ export default function MagnifierOverlay({
         />
         {/* Crosshair lines through target ball center */}
         <Line
-          x1={hitMarble.pos.x} y1={hitMarble.pos.y - hitMarble.radius}
-          x2={hitMarble.pos.x} y2={hitMarble.pos.y + hitMarble.radius}
+          x1={hitMarble.pos.x + offsetX} y1={hitMarble.pos.y - hitMarble.radius + offsetY}
+          x2={hitMarble.pos.x + offsetX} y2={hitMarble.pos.y + hitMarble.radius + offsetY}
           stroke={lineColor} strokeWidth={1} strokeDasharray={[2, 2]} strokeOpacity={0.85}
         />
         <Line
-          x1={hitMarble.pos.x - hitMarble.radius} y1={hitMarble.pos.y}
-          x2={hitMarble.pos.x + hitMarble.radius} y2={hitMarble.pos.y}
+          x1={hitMarble.pos.x - hitMarble.radius + offsetX} y1={hitMarble.pos.y + offsetY}
+          x2={hitMarble.pos.x + hitMarble.radius + offsetX} y2={hitMarble.pos.y + offsetY}
           stroke={lineColor} strokeWidth={1} strokeDasharray={[2, 2]} strokeOpacity={0.85}
         />
       </Svg>

@@ -421,7 +421,10 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     const desiredBoardW = desiredBoardH / 2;
 
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(desiredBoardW, desiredBoardH);
+      const INSET = 11; // 6px margin + 5px half stroke
+      const innerW = Math.max(4, desiredBoardW - INSET * 2);
+      const innerH = Math.max(4, desiredBoardH - INSET * 2);
+      const eng = new PhysicsEngine(innerW, innerH);
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
@@ -436,7 +439,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       return;
     }
     const eng = engineRef.current;
-    if (eng) { eng.width = desiredBoardW; eng.height = desiredBoardH; }
+    if (eng) { const INSET = 11; eng.width = Math.max(4, desiredBoardW - INSET * 2); eng.height = Math.max(4, desiredBoardH - INSET * 2); }
   };
 
   const pan = useRef(
@@ -700,6 +703,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               yellowBallId={yellowIdRef.current}
               activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
               isReady={!winner && ready}
+              offsetX={11}
+              offsetY={11}
             />
             <TrajectoryLine
               aim={aimingRef.current}
@@ -713,6 +718,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
               disabled={!!winner}
+              offsetX={11}
+              offsetY={11}
             />
           </Svg>
           <MagnifierOverlay
@@ -721,6 +728,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
             chargeDirection={chargeDirectionRef.current}
             engine={engineRef.current}
             activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
+            offsetX={11}
+            offsetY={11}
           />
             <PickerOverlay
             visible={!winner && ready && !(vsAI && turn === 'white')}

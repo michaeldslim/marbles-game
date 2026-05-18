@@ -39,7 +39,7 @@ export default function PickerOverlay({
   const cy = SIZE / 2;
   const dotX = cx + pickerContact.x;
   const dotY = cy + pickerContact.y;
-  const pos = pickerPos ?? { x: boardWidth - SIZE - 12, y: 130 };
+  const pos = pickerPos ?? { x: boardWidth - SIZE - 11, y: 130 };
 
   return (
     <View style={{ position: 'absolute', top: pos.y, left: pos.x, width: SIZE, height: SIZE + HANDLE_H }}
