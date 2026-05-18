@@ -71,7 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   englishFactor: ENGLISH_FACTOR,
   stopDrag:      STOP_DRAG,
   trajectoryLength: TRAJECTORY_LENGTH,
-  language: 'en',
+  language: 'ko',
 };
 
 interface SettingsContextValue {
