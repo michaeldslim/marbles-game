@@ -132,13 +132,18 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         const SIZE = 128;
-        const cur = pickerPosRef.current ?? { x: sizeRef.current.w - SIZE - 12, y: 130 };
+        const boardMaxH = sizeRef.current.h - 140;
+        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
+        const boardW = boardH / 2;
+        const cur = pickerPosRef.current ?? { x: Math.max(0, boardW - SIZE - 12), y: 130 };
         pickerDragStartRef.current = { ...cur };
       },
       onPanResponderMove: (_, g) => {
         const SIZE = 128; const HANDLE_H = 22;
-        const boardH = sizeRef.current.h - 140;
-        const nx = Math.max(0, Math.min(sizeRef.current.w - SIZE, pickerDragStartRef.current.x + g.dx));
+        const boardMaxH = sizeRef.current.h - 140;
+        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
+        const boardW = boardH / 2;
+        const nx = Math.max(0, Math.min(boardW - SIZE, pickerDragStartRef.current.x + g.dx));
         const ny = Math.max(0, Math.min(boardH - SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
         pickerPosRef.current = { x: nx, y: ny };
         setPickerPos({ x: nx, y: ny });
@@ -407,12 +412,16 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    const newW = Math.max(320, width);
-    const newH = Math.max(480, height);
-    setSize({ w: newW, h: newH });
-    const boardHeight = newH - 140;
+    const containerW = Math.max(320, width);
+    const containerH = Math.max(480, height);
+    setSize({ w: containerW, h: containerH });
+
+    const boardMaxH = containerH - 140;
+    const desiredBoardH = Math.min(boardMaxH, containerW * 2);
+    const desiredBoardW = desiredBoardH / 2;
+
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(newW, boardHeight);
+      const eng = new PhysicsEngine(desiredBoardW, desiredBoardH);
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
@@ -427,7 +436,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       return;
     }
     const eng = engineRef.current;
-    if (eng) { eng.width = newW; eng.height = boardHeight; }
+    if (eng) { eng.width = desiredBoardW; eng.height = desiredBoardH; }
   };
 
   const pan = useRef(
@@ -539,7 +548,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     setMarbles([...eng.marbles]);
   };
 
-  const boardH = size.h - 140;
+  const boardMaxH = size.h - 140;
+  const boardH = Math.min(boardMaxH, size.w * 2);
+  const boardW = boardH / 2;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -679,10 +690,10 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       )}
 
       <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <View style={{ width: size.w, height: boardH }}>
-          <Svg width={size.w} height={boardH}>
-            <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
-            <Rect x={6} y={6} width={size.w - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
+        <View style={{ width: boardW, height: boardH }}>
+            <Svg width={boardW} height={boardH}>
+              <Rect x={0} y={0} width={boardW} height={boardH} fill="#2d6a4f" />
+              <Rect x={6} y={6} width={boardW - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
             <BilliardsMarbles
               marbles={marbles}
               whiteBallId={playerIdRef.current}
@@ -711,11 +722,11 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
             engine={engineRef.current}
             activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
           />
-          <PickerOverlay
+            <PickerOverlay
             visible={!winner && ready && !(vsAI && turn === 'white')}
             pickerContact={pickerContact}
             pickerPos={pickerPos}
-            boardWidth={size.w}
+            boardWidth={boardW}
             pickerPanHandlers={pickerPan.panHandlers as Record<string, unknown>}
             pickerMovePanHandlers={pickerMovePan.panHandlers as Record<string, unknown>}
           />

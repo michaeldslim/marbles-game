@@ -44,10 +44,18 @@ export interface Settings {
   language?: 'ko' | 'en';
 }
 
-const screenW = Dimensions.get('window').width;
-export const AUTO_BALL_RADIUS = Math.round(screenW * 0.042); // 360→15, 412→17, 659→28
-export const BALL_RADIUS_MIN  = Math.round(AUTO_BALL_RADIUS * 0.7);
-export const BALL_RADIUS_MAX  = Math.round(AUTO_BALL_RADIUS * 1.6);
+const { width: screenW, height: screenH } = Dimensions.get('window');
+// Compute an AUTO_BALL_RADIUS that fits a 1:2 (W:H) playboard placed within the
+// available window height (reserve ~140px for HUD). Convert real-world ball
+// radius (61.5mm diameter → 30.75mm radius) to pixels using board pixel height
+// with 1 inch = 2.54 cm conversion.
+const BOARD_UI_GAP = 140;
+const BALL_RADIUS_M = 0.03075; // 30.75 mm
+const boardMaxH = Math.max(320, screenH - BOARD_UI_GAP);
+const desiredBoardH = Math.min(boardMaxH, Math.max(320, screenW) * 2);
+export const AUTO_BALL_RADIUS = Math.max(4, Math.round(BALL_RADIUS_M * desiredBoardH / 2.54));
+export const BALL_RADIUS_MIN  = Math.max(3, Math.round(AUTO_BALL_RADIUS * 0.7));
+export const BALL_RADIUS_MAX  = Math.max(16, Math.round(AUTO_BALL_RADIUS * 1.6));
 
 export const DEFAULT_SETTINGS: Settings = {
   ballRadius3C:  AUTO_BALL_RADIUS,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
@@ -24,7 +24,9 @@ function SettingRow({
   desc?: { en: string; ko: string };
 }) {
   const [showDesc, setShowDesc] = useState(false);
-  const display = format ? format(value) : String(Math.round(value * 100) / 100);
+  const [localValue, setLocalValue] = useState<number>(value);
+  useEffect(() => { setLocalValue(value); }, [value]);
+  const display = format ? format(localValue) : String(Math.round(localValue * 100) / 100);
   const { settings } = useSettings();
   const lang = settings.language ?? 'en';
   const displayLabel = lang === 'ko' ? labelKo : label;
@@ -51,8 +53,9 @@ function SettingRow({
         minimumValue={min}
         maximumValue={max}
         step={step}
-        value={value}
-        onValueChange={onValueChange}
+        value={localValue}
+        onValueChange={(v: number) => setLocalValue(v)}
+        onSlidingComplete={(v: number) => onValueChange(v)}
         minimumTrackTintColor="#2cc47a"
         maximumTrackTintColor="#ccc"
         thumbTintColor="#2cc47a"
