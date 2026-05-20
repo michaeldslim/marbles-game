@@ -17,6 +17,8 @@ type Props = {
   activeCueId: number | null | undefined;
   /** Whether the board is in "ready to shoot" state (shows the active ring) */
   isReady: boolean;
+  offsetX?: number;
+  offsetY?: number;
 };
 
 /**
@@ -29,6 +31,8 @@ export default function BilliardsMarbles({
   yellowBallId,
   activeCueId,
   isReady,
+  offsetX = 0,
+  offsetY = 0,
 }: Props) {
   // rotStore is a module-level map (persisting across renders/components)
   // we mutate it directly from the IIFE rendering code so it survives re-renders
@@ -53,17 +57,17 @@ export default function BilliardsMarbles({
           <React.Fragment key={m.id}>
             {isActiveCue && isReady && (
               <Circle
-                cx={m.pos.x} cy={m.pos.y} r={m.radius + 5}
+                cx={m.pos.x + offsetX} cy={m.pos.y + offsetY} r={m.radius + 5}
                 fill="none" stroke="#fff" strokeWidth={2} strokeOpacity={0.7}
               />
             )}
             <Ellipse
-              cx={m.pos.x} cy={m.pos.y + m.radius * 0.6}
+              cx={m.pos.x + offsetX} cy={m.pos.y + offsetY + m.radius * 0.6}
               rx={m.radius * 1.15} ry={m.radius * 0.5}
               fill="#000" opacity={0.12}
             />
             <Circle
-              cx={m.pos.x} cy={m.pos.y} r={m.radius}
+              cx={m.pos.x + offsetX} cy={m.pos.y + offsetY} r={m.radius}
               fill={m.color || '#fff'}
               stroke={isWhite ? '#999' : 'none'}
               strokeWidth={isWhite ? 1.5 : 0}
@@ -85,8 +89,8 @@ export default function BilliardsMarbles({
               state.lastY = m.pos.y;
               rotStore[m.id] = state;
               const HIGHLIGHT_DIST = 0.62 * m.radius;
-              const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST;
-              const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST;
+              const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST + offsetX;
+              const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST + offsetY;
               // slightly larger highlight: 18% of radius with 2px minimum for visibility
               const hr = Math.max(0.18 * m.radius, 2.0);
               // choose highlight color: darker for white, red for yellow, white for others

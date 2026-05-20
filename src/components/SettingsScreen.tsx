@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
@@ -24,7 +24,9 @@ function SettingRow({
   desc?: { en: string; ko: string };
 }) {
   const [showDesc, setShowDesc] = useState(false);
-  const display = format ? format(value) : String(Math.round(value * 100) / 100);
+  const [localValue, setLocalValue] = useState<number>(value);
+  useEffect(() => { setLocalValue(value); }, [value]);
+  const display = format ? format(localValue) : String(Math.round(localValue * 100) / 100);
   const { settings } = useSettings();
   const lang = settings.language ?? 'en';
   const displayLabel = lang === 'ko' ? labelKo : label;
@@ -51,8 +53,9 @@ function SettingRow({
         minimumValue={min}
         maximumValue={max}
         step={step}
-        value={value}
-        onValueChange={onValueChange}
+        value={localValue}
+        onValueChange={(v: number) => setLocalValue(v)}
+        onSlidingComplete={(v: number) => onValueChange(v)}
         minimumTrackTintColor="#2cc47a"
         maximumTrackTintColor="#ccc"
         thumbTintColor="#2cc47a"
@@ -146,24 +149,24 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           label="3-Cushion Ball Friction"
           labelKo="3쿠션 마찰"
           value={settings.friction3C}
-          min={0.97} max={0.9999} step={0.0005}
-          format={(v) => v.toFixed(4)}
+          min={0.3} max={0.95} step={0.01}
+          format={(v) => v.toFixed(2)}
           onValueChange={(v) => updateSetting('friction3C', v)}
           desc={{
-            en: 'How quickly balls slow down while rolling. Values closer to 1.0 = less friction (ball rolls farther).',
-            ko: '공이 구를 때 속도가 줄어드는 비율. 1.0에 가까울수록 마찰이 적어 더 멀리 굴러갑니다.',
+            en: 'Per-second speed decay. Higher = less friction (rolls farther). Lower = more friction (stops sooner). Default 0.68.',
+            ko: '초당 속도 감소 비율. 높을수록 마찰이 적어 더 멀리 굴러갑니다. 낮을수록 빨리 멈춥니다. 기본값 0.68.',
           }}
         />
         <SettingRow
           label="4-Ball Ball Friction"
           labelKo="사구 마찰"
           value={settings.friction4B}
-          min={0.97} max={0.9999} step={0.0005}
-          format={(v) => v.toFixed(4)}
+          min={0.3} max={0.95} step={0.01}
+          format={(v) => v.toFixed(2)}
           onValueChange={(v) => updateSetting('friction4B', v)}
           desc={{
-            en: 'Same as above but applied to the 4-Ball table.',
-            ko: '사구 테이블에서의 마찰 계수.',
+            en: 'Per-second speed decay for the 4-Ball table. Higher = less friction (rolls farther). Default 0.68.',
+            ko: '사구 테이블의 초당 속도 감소 비율. 높을수록 마찰이 적어 더 멀리 굴러갑니다. 기본값 0.68.',
           }}
         />
 

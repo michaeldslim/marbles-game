@@ -11,24 +11,26 @@ export const ENGINE_DEFAULT_RESTITUTION = 0.8;
 export const SETTLE_SPEED_THRESHOLD = 0.5;
 export const SETTLE_FRAMES = 30;
 
-// 3-Cushion billiards ball friction (lower = more deceleration)
-export const BILLIARDS_BALL_FRICTION = 0.991;
+// 3-Cushion billiards ball friction — per-second decay factor (0..1).
+// Physics applies Math.pow(friction, dt) per step so value is sub-step-safe.
+export const BILLIARDS_BALL_FRICTION = 0.73;
 
 // Billiards cue launch speed — effective speed = BILLIARDS_LAUNCH_SPEED * DEFAULT_PLAYER_POWER
-export const BILLIARDS_LAUNCH_SPEED = 220;
+export const BILLIARDS_LAUNCH_SPEED = 240;
 
 // Frames of all-balls-slow before declaring "Ready" in billiards (~0.2s at 60fps)
 export const BILLIARDS_SETTLE_FRAMES = 10;
 
 // 4-Ball billiards (사구) — separate tuning
-export const FOURBALL_BALL_FRICTION = 0.991;
-export const FOURBALL_LAUNCH_SPEED = 220;
+export const FOURBALL_BALL_FRICTION = 0.73;
+export const FOURBALL_LAUNCH_SPEED = 240;
 export const FOURBALL_SETTLE_FRAMES = 10;
 export const FOURBALL_WIN_SCORE = 10;
 
 // Pile marble (triangle rack) settings
 export const PILE_MARBLE_RADIUS = 12;
-export const PILE_MARBLE_FRICTION = 0.9999;
+// Per-second decay factor; equivalent old per-frame value at 60 fps: ~0.9999.
+export const PILE_MARBLE_FRICTION = 0.994;
 
 // ── Shot technique spin constants ───────────────────────────────────────────
 // How much spin (topspin/backspin) shifts the cue ball's post-collision speed.
@@ -39,8 +41,8 @@ export const SPIN_TRANSFER_FACTOR = 0.5;
 // Applied as a fraction of the normal speed component.
 export const ENGLISH_FACTOR = 0.4;
 
-// Per-frame spin decay multiplier (spin dissipates as ball rolls).
-export const SPIN_DECAY = 0.975;
+// Per-second spin decay factor (sub-step safe). Equivalent old per-frame value at 60 fps: ~0.975.
+export const SPIN_DECAY = 0.219;
 
 // Fraction of spin remaining after a marble-marble collision.
 export const SPIN_COLLISION_RETAIN = 0.25;
@@ -50,7 +52,7 @@ export const SIDE_SPIN_CUSHION_RETAIN = 0.6;
 
 // Linear deceleration (px/s²) applied at all speeds to make balls stop sooner.
 // At high speeds this is negligible vs multiplicative friction; at low speeds it dominates.
-export const STOP_DRAG = 6;
+export const STOP_DRAG = 7;
 
 // default length of the trajectory preview line in pixels
 export const TRAJECTORY_LENGTH = 60;

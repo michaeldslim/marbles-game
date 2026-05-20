@@ -2,9 +2,10 @@ import React from 'react';
 import { View } from 'react-native';
 import { Circle, Line, Svg } from 'react-native-svg';
 
-const PICKER_R = 54;
-const SIZE = 128;
-const HANDLE_H = 22;
+export const PICKER_R    = 40;
+export const PICKER_SIZE = 96;
+export const PICKER_HALF = PICKER_SIZE / 2; // 48
+const HANDLE_H = 18;
 
 type Props = {
   /** Whether the picker should be visible */
@@ -35,20 +36,20 @@ export default function PickerOverlay({
 }: Props) {
   if (!visible) return null;
 
-  const cx = SIZE / 2;
-  const cy = SIZE / 2;
+  const cx = PICKER_HALF;
+  const cy = PICKER_HALF;
   const dotX = cx + pickerContact.x;
   const dotY = cy + pickerContact.y;
-  const pos = pickerPos ?? { x: boardWidth - SIZE - 12, y: 130 };
+  const pos = pickerPos ?? { x: boardWidth - PICKER_SIZE - 11, y: 130 };
 
   return (
-    <View style={{ position: 'absolute', top: pos.y, left: pos.x, width: SIZE, height: SIZE + HANDLE_H }}
+    <View style={{ position: 'absolute', top: pos.y, left: pos.x, width: PICKER_SIZE, height: PICKER_SIZE + HANDLE_H }}
       pointerEvents="box-none"
     >
       {/* Drag handle */}
       <View
         style={{
-          height: HANDLE_H, width: SIZE,
+          height: HANDLE_H, width: PICKER_SIZE,
           alignItems: 'center', justifyContent: 'center',
           backgroundColor: 'rgba(0,0,0,0.4)',
           borderTopLeftRadius: 6, borderTopRightRadius: 6,
@@ -61,8 +62,8 @@ export default function PickerOverlay({
       </View>
 
       {/* Picker circle */}
-      <View style={{ width: SIZE, height: SIZE }} {...(pickerPanHandlers as object)}>
-        <Svg width={SIZE} height={SIZE}>
+      <View style={{ width: PICKER_SIZE, height: PICKER_SIZE }} {...(pickerPanHandlers as object)}>
+        <Svg width={PICKER_SIZE} height={PICKER_SIZE}>
           {/* outer ring */}
           <Circle cx={cx} cy={cy} r={PICKER_R} fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
           {/* crosshair lines */}

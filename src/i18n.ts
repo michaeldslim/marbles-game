@@ -3,6 +3,7 @@ export type Lang = 'en' | 'ko';
 const STRINGS: Record<Lang, Record<string, string>> = {
   en: {
   plus1: '+1',
+  plus2: '+2',
   foulMiss: 'Foul — miss turn',
   cushions: 'Cushions',
   balls: 'Balls',
@@ -33,6 +34,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   },
   ko: {
   plus1: '+1',
+  plus2: '+2',
   foulMiss: '파울 — 차례 종료',
   cushions: '쿠션',
   balls: '공',

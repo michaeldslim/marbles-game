@@ -24,6 +24,8 @@ type Props = {
   trajectoryLength: number;
   /** When true, nothing is rendered (e.g. winner declared) */
   disabled?: boolean;
+  offsetX?: number;
+  offsetY?: number;
 };
 
 /**
@@ -42,6 +44,8 @@ export default function TrajectoryLine({
   english,
   trajectoryLength,
   disabled,
+  offsetX = 0,
+  offsetY = 0,
 }: Props) {
   if (!eng || disabled || activeCueId == null) return null;
   if (!aim && !charging) return null;
@@ -50,8 +54,9 @@ export default function TrajectoryLine({
   if (charging && chargeDirection) {
     ({ dx, dy, mag } = chargeDirection);
   } else if (aim) {
-    dx = (aim.x || aim.startX) - aim.startX;
-    dy = (aim.y || aim.startY) - aim.startY;
+    // aim.x/y and aim.startX/Y are both in physics coords; delta = direction from ball to finger
+    dx = aim.x - aim.startX;
+    dy = aim.y - aim.startY;
     mag = Math.hypot(dx, dy) || 1;
   } else {
     return null;
@@ -73,15 +78,17 @@ export default function TrajectoryLine({
   const englishMap: Record<string, number> = { left: -0.85, none: 0, right: 0.85 };
   let sideSpin = englishMap[english] ?? 0;
   const dt = 1 / 60;
+  // fr is a per-second decay factor; convert to per-step to match physics engine
+  const frStep = fr < 1 ? Math.pow(fr, dt) : 1;
   const pts: number[] = [];
   for (let i = 0; i < trajectoryLength; i++) {
     px += vx * dt; py += vy * dt;
-    vx *= fr; vy *= fr;
+    vx *= frStep; vy *= frStep;
     if (px - r < 0) { px = r; const pvx = vx; vx *= -e; if (sideSpin) { vy -= sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
     if (px + r > eng.width) { px = eng.width - r; const pvx = vx; vx *= -e; if (sideSpin) { vy += sideSpin * ef * Math.abs(pvx); sideSpin *= scr; } }
     if (py - r < 0) { py = r; const pvy = vy; vy *= -e; if (sideSpin) { vx += sideSpin * ef * Math.abs(pvy); sideSpin *= scr; } }
     if (py + r > eng.height) { py = eng.height - r; const pvy = vy; vy *= -e; if (sideSpin) { vx -= sideSpin * ef * Math.abs(pvy); sideSpin *= scr; } }
-    pts.push(px, py);
+    pts.push(px + offsetX, py + offsetY);
   }
   return (
     <Polyline

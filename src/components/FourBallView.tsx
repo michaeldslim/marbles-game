@@ -12,7 +12,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
-import PickerOverlay from '../utils/PickerOverlay';
+import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
 import MagnifierOverlay from '../utils/MagnifierOverlay';
 import TrajectoryLine from '../utils/TrajectoryLine';
 import { Audio } from 'expo-av';
@@ -85,7 +85,6 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
   useEffect(() => { englishRef.current  = english;  }, [english]);
 
   // Cue ball contact point picker
-  const PICKER_R = 54;
   const pickerContactRef = useRef({ x: 0, y: 0 });
   const [pickerContact, setPickerContact] = useState({ x: 0, y: 0 });
   const pickerPan = useRef(
@@ -93,8 +92,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const cx = evt.nativeEvent.locationX - 64;
-        const cy = evt.nativeEvent.locationY - 64;
+        const cx = evt.nativeEvent.locationX - PICKER_HALF;
+        const cy = evt.nativeEvent.locationY - PICKER_HALF;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -106,8 +105,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         setShotType(snapSpin); setEnglish(snapEng);
       },
       onPanResponderMove: (evt) => {
-        const cx = evt.nativeEvent.locationX - 64;
-        const cy = evt.nativeEvent.locationY - 64;
+        const cx = evt.nativeEvent.locationX - PICKER_HALF;
+        const cy = evt.nativeEvent.locationY - PICKER_HALF;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -131,15 +130,19 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        const SIZE = 128;
-        const cur = pickerPosRef.current ?? { x: sizeRef.current.w - SIZE - 12, y: 130 };
+        const boardMaxH = sizeRef.current.h - 140;
+        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
+        const boardW = boardH / 2;
+        const cur = pickerPosRef.current ?? { x: Math.max(0, boardW - PICKER_SIZE - 12), y: 130 };
         pickerDragStartRef.current = { ...cur };
       },
       onPanResponderMove: (_, g) => {
-        const SIZE = 128; const HANDLE_H = 22;
-        const boardH = sizeRef.current.h - 140;
-        const nx = Math.max(0, Math.min(sizeRef.current.w - SIZE, pickerDragStartRef.current.x + g.dx));
-        const ny = Math.max(0, Math.min(boardH - SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
+        const HANDLE_H = 18;
+        const boardMaxH = sizeRef.current.h - 140;
+        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
+        const boardW = boardH / 2;
+        const nx = Math.max(0, Math.min(boardW - PICKER_SIZE, pickerDragStartRef.current.x + g.dx));
+        const ny = Math.max(0, Math.min(boardH - PICKER_SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
         pickerPosRef.current = { x: nx, y: ny };
         setPickerPos({ x: nx, y: ny });
       },
@@ -292,11 +295,19 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     let rafId: number | null = null;
     const tick = () => {
       const now = Date.now();
-      const dt = (now - last) / 1000;
+      // Cap dt to 50ms to avoid huge jumps after app focus loss
+      const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       const eng = engineRef.current;
       if (eng) {
-        eng.step(dt);
+        // Adaptive sub-stepping: prevent tunneling when fast balls are smaller than
+        // the distance they travel per frame.  Split dt so each sub-step moves the
+        // fastest marble at most half its radius (guarantees overlap detection).
+        const maxSpeed = eng.marbles.reduce((s, m) => Math.max(s, Math.hypot(m.vel.x, m.vel.y)), 0);
+        const minR     = eng.marbles.reduce((s, m) => Math.min(s, m.radius), 8);
+        const subSteps = Math.max(1, Math.ceil(maxSpeed * dt / (minR * 0.5)));
+        const subDt    = dt / subSteps;
+        for (let i = 0; i < subSteps; i++) eng.step(subDt);
 
         if (shotActiveRef.current) {
           const cueId      = turnRef.current === 'yellow' ? yellowIdRef.current : playerIdRef.current;
@@ -407,12 +418,19 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    const newW = Math.max(320, width);
-    const newH = Math.max(480, height);
-    setSize({ w: newW, h: newH });
-    const boardHeight = newH - 140;
+    const containerW = Math.max(320, width);
+    const containerH = Math.max(480, height);
+    setSize({ w: containerW, h: containerH });
+
+    const boardMaxH = containerH - 140;
+    const desiredBoardH = Math.min(boardMaxH, containerW * 2);
+    const desiredBoardW = desiredBoardH / 2;
+
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(newW, boardHeight);
+      const INSET = 11; // 6px margin + 5px half stroke
+      const innerW = Math.max(4, desiredBoardW - INSET * 2);
+      const innerH = Math.max(4, desiredBoardH - INSET * 2);
+      const eng = new PhysicsEngine(innerW, innerH);
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
@@ -427,7 +445,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       return;
     }
     const eng = engineRef.current;
-    if (eng) { eng.width = newW; eng.height = boardHeight; }
+    if (eng) { const INSET = 11; eng.width = Math.max(4, desiredBoardW - INSET * 2); eng.height = Math.max(4, desiredBoardH - INSET * 2); }
   };
 
   const pan = useRef(
@@ -462,18 +480,26 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           englishRef.current = 'none'; setEnglish('none');
           return;
         }
-        // Normal aim setup
+        // Normal aim setup — startX/Y = cue ball in physics coords.
+        // Move events convert arenaWrap locationX/Y → physics coords so the direction
+        // "startXY → aim.xy" is correctly "ball → finger" in physics space.
         const eng = engineRef.current;
         const activeCueId = turnRef.current === 'yellow' ? yellowIdRef.current : playerIdRef.current;
         const active = eng && activeCueId != null ? eng.marbles.find((m) => m.id === activeCueId) : null;
-        const sx = active ? active.pos.x : evt.nativeEvent.locationX;
-        const sy = active ? active.pos.y : evt.nativeEvent.locationY;
+        const sx = active ? active.pos.x : 0;
+        const sy = active ? active.pos.y : 0;
         aimingRef.current = { startX: sx, startY: sy, x: sx, y: sy };
       },
       onPanResponderMove: (evt) => {
         if (!aimingRef.current) return;
-        aimingRef.current.x = evt.nativeEvent.locationX;
-        aimingRef.current.y = evt.nativeEvent.locationY;
+        // Convert arenaWrap touch position to physics coords:
+        //   physics_x = locationX − (arenaWrap_width − boardW) / 2 − 11
+        const bH = Math.min(sizeRef.current.h - 140, sizeRef.current.w * 2);
+        const bW = bH / 2;
+        const boardOffX = (sizeRef.current.w - bW) / 2 + 11;
+        const boardOffY = 11;
+        aimingRef.current.x = evt.nativeEvent.locationX - boardOffX;
+        aimingRef.current.y = evt.nativeEvent.locationY - boardOffY;
       },
       onPanResponderRelease: () => {
         if (chargingRef.current) return;
@@ -484,8 +510,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         if (activeCueId == null) { aimingRef.current = null; return; }
         const active = eng.marbles.find((m) => m.id === activeCueId);
         if (!active) { aimingRef.current = null; return; }
-        const dx = (aim.x || aim.startX) - active.pos.x;
-        const dy = (aim.y || aim.startY) - active.pos.y;
+        // aim.x/y are now in physics coords; aim.startX/Y = ball pos in physics coords
+        const dx = aim.x - aim.startX;
+        const dy = aim.y - aim.startY;
         const dist = Math.hypot(dx, dy);
         if (dist < 5) { aimingRef.current = null; return; }
         chargeDirectionRef.current = { dx, dy, mag: dist };
@@ -539,7 +566,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     setMarbles([...eng.marbles]);
   };
 
-  const boardH = size.h - 140;
+  const boardMaxH = size.h - 140;
+  const boardH = Math.min(boardMaxH, size.w * 2);
+  const boardW = boardH / 2;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -679,16 +708,18 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       )}
 
       <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <View style={{ width: size.w, height: boardH }}>
-          <Svg width={size.w} height={boardH}>
-            <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
-            <Rect x={6} y={6} width={size.w - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
+        <View style={{ width: boardW, height: boardH }}>
+            <Svg width={boardW} height={boardH}>
+              <Rect x={0} y={0} width={boardW} height={boardH} fill="#2d6a4f" />
+              <Rect x={6} y={6} width={boardW - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
             <BilliardsMarbles
               marbles={marbles}
               whiteBallId={playerIdRef.current}
               yellowBallId={yellowIdRef.current}
               activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
               isReady={!winner && ready}
+              offsetX={11}
+              offsetY={11}
             />
             <TrajectoryLine
               aim={aimingRef.current}
@@ -702,6 +733,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
               disabled={!!winner}
+              offsetX={11}
+              offsetY={11}
             />
           </Svg>
           <MagnifierOverlay
@@ -710,12 +743,14 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
             chargeDirection={chargeDirectionRef.current}
             engine={engineRef.current}
             activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
+            offsetX={11}
+            offsetY={11}
           />
-          <PickerOverlay
+            <PickerOverlay
             visible={!winner && ready && !(vsAI && turn === 'white')}
             pickerContact={pickerContact}
             pickerPos={pickerPos}
-            boardWidth={size.w}
+            boardWidth={boardW}
             pickerPanHandlers={pickerPan.panHandlers as Record<string, unknown>}
             pickerMovePanHandlers={pickerMovePan.panHandlers as Record<string, unknown>}
           />

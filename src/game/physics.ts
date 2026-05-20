@@ -32,7 +32,9 @@ export class PhysicsEngine {
   height: number;
   marbles: Marble[] = [];
   nextId = 1;
-  friction = 0.998;
+  // Per-second friction decay (0..1). Applied as Math.pow(friction, dt) per step
+  // so it is sub-step safe.  Equivalent old per-frame value at 60 fps: ~0.998.
+  friction = 0.887;
   // coefficient of restitution (bounciness) 0..1
   restitution = ENGINE_DEFAULT_RESTITUTION;
   // spin transfer factor (draw/follow effect strength) — overridable from settings
@@ -69,10 +71,13 @@ export class PhysicsEngine {
       if (m.captured || m.stopped) continue;
       m.pos.x += m.vel.x * dt;
       m.pos.y += m.vel.y * dt;
-      // apply per-marble friction if supplied, otherwise engine friction
+      // Friction is stored as a per-second decay factor (0..1) so it is
+      // sub-step safe: applying Math.pow(fr, dt) per sub-step gives the
+      // same total per-frame effect regardless of how many sub-steps are used.
       const fr = Math.min(Math.max(m.friction ?? this.friction, 0), 1);
-      m.vel.x *= fr;
-      m.vel.y *= fr;
+      const frStep = fr < 1 ? Math.pow(fr, dt) : 1;
+      m.vel.x *= frStep;
+      m.vel.y *= frStep;
       // apply linear drag to make balls stop sooner at low speeds
       const speed = Math.hypot(m.vel.x, m.vel.y);
       if (speed > 0) {
@@ -80,13 +85,13 @@ export class PhysicsEngine {
         m.vel.x -= (m.vel.x / speed) * drag;
         m.vel.y -= (m.vel.y / speed) * drag;
       }
-      // decay spin values (rolling gradually removes spin)
+      // Decay spin values — SPIN_DECAY is also a per-second factor, same reasoning.
       if (m.spin) {
-        m.spin *= SPIN_DECAY;
+        m.spin *= SPIN_DECAY < 1 ? Math.pow(SPIN_DECAY, dt) : 1;
         if (Math.abs(m.spin) < 0.001) m.spin = 0;
       }
       if (m.sideSpin) {
-        m.sideSpin *= SPIN_DECAY;
+        m.sideSpin *= SPIN_DECAY < 1 ? Math.pow(SPIN_DECAY, dt) : 1;
         if (Math.abs(m.sideSpin) < 0.001) m.sideSpin = 0;
       }
     }

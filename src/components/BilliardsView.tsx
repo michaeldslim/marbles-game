@@ -12,7 +12,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
-import PickerOverlay from '../utils/PickerOverlay';
+import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
 import MagnifierOverlay from '../utils/MagnifierOverlay';
 import TrajectoryLine from '../utils/TrajectoryLine';
 import { Audio } from 'expo-av';
@@ -62,6 +62,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   const firstBallHitRef = useRef<'yellow' | 'red' | null>(null); // which ball struck first
   const cushionCountRef = useRef<number>(0);           // live cushion count for display
   const cushionAtSecondHitRef = useRef<number>(-1);    // cushions when 2nd ball is struck
+  const cushionAtFirstHitRef = useRef<number>(-1);     // cushions when 1st ball is struck
 
   // Break: first shot must hit red
   const isBreakRef = useRef<boolean>(true);
@@ -82,7 +83,6 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   useEffect(() => { englishRef.current  = english;  }, [english]);
 
   // Cue ball contact point picker
-  const PICKER_R = 54;
   const pickerContactRef = useRef({ x: 0, y: 0 }); // pixel offset from circle center
   const [pickerContact, setPickerContact] = useState({ x: 0, y: 0 });
   const pickerPan = useRef(
@@ -90,8 +90,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const cx = evt.nativeEvent.locationX - 64;
-        const cy = evt.nativeEvent.locationY - 64;
+        const cx = evt.nativeEvent.locationX - PICKER_HALF;
+        const cy = evt.nativeEvent.locationY - PICKER_HALF;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -104,8 +104,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
         setShotType(snapSpin); setEnglish(snapEng);
       },
       onPanResponderMove: (evt) => {
-        const cx = evt.nativeEvent.locationX - 64;
-        const cy = evt.nativeEvent.locationY - 64;
+        const cx = evt.nativeEvent.locationX - PICKER_HALF;
+        const cy = evt.nativeEvent.locationY - PICKER_HALF;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -129,15 +129,19 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        const SIZE = 128;
-        const cur = pickerPosRef.current ?? { x: sizeRef.current.w - SIZE - 12, y: 130 };
+        const boardMaxH = sizeRef.current.h - 140;
+        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
+        const boardW = boardH / 2;
+        const cur = pickerPosRef.current ?? { x: Math.max(0, boardW - PICKER_SIZE - 12), y: 130 };
         pickerDragStartRef.current = { ...cur };
       },
       onPanResponderMove: (_, g) => {
-        const SIZE = 128; const HANDLE_H = 22;
-        const boardH = sizeRef.current.h - 140;
-        const nx = Math.max(0, Math.min(sizeRef.current.w - SIZE, pickerDragStartRef.current.x + g.dx));
-        const ny = Math.max(0, Math.min(boardH - SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
+        const HANDLE_H = 18;
+        const boardMaxH = sizeRef.current.h - 140;
+        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
+        const boardW = boardH / 2;
+        const nx = Math.max(0, Math.min(boardW - PICKER_SIZE, pickerDragStartRef.current.x + g.dx));
+        const ny = Math.max(0, Math.min(boardH - PICKER_SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
         pickerPosRef.current = { x: nx, y: ny };
         setPickerPos({ x: nx, y: ny });
       },
@@ -191,11 +195,19 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     let rafId: number | null = null;
     const tick = () => {
       const now = Date.now();
-      const dt = (now - last) / 1000;
+      // Cap dt to 50ms to avoid huge jumps after app focus loss
+      const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       const eng = engineRef.current;
       if (eng) {
-        eng.step(dt);
+        // Adaptive sub-stepping: prevent tunneling when fast balls are smaller than
+        // the distance they travel per frame.  Split dt so each sub-step moves the
+        // fastest marble at most half its radius (guarantees overlap detection).
+        const maxSpeed = eng.marbles.reduce((s, m) => Math.max(s, Math.hypot(m.vel.x, m.vel.y)), 0);
+        const minR     = eng.marbles.reduce((s, m) => Math.min(s, m.radius), 8);
+        const subSteps = Math.max(1, Math.ceil(maxSpeed * dt / (minR * 0.5)));
+        const subDt    = dt / subSteps;
+        for (let i = 0; i < subSteps; i++) eng.step(subDt);
 
         if (shotActiveRef.current) {
           const cueId  = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
@@ -218,6 +230,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             yellowHitRef.current = true;
             if (firstBallHitRef.current === null) {
               firstBallHitRef.current = 'yellow';
+              // record cushions at first ball contact
+              cushionAtFirstHitRef.current = c;
             } else {
               // This is the second ball hit — record cushions at this moment
               cushionAtSecondHitRef.current = c;
@@ -230,6 +244,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             redBallHitRef.current = true;
             if (firstBallHitRef.current === null) {
               firstBallHitRef.current = 'red';
+              // record cushions at first ball contact
+              cushionAtFirstHitRef.current = c;
             } else {
               cushionAtSecondHitRef.current = c;
             }
@@ -245,20 +261,42 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               const bothHit  = yellowHitRef.current && redBallHitRef.current;
               const breakFoul = isBreakRef.current && firstBallHitRef.current !== 'red' && firstBallHitRef.current !== null;
               // 3+ cushions accumulated before the second ball was struck
-              const validCushions = cushionAtSecondHitRef.current >= 3;
+              // Determine cushions relative to first and second object contacts.
+              const firstCushions = cushionAtFirstHitRef.current;   // -1 if not set
+              const secondCushions = cushionAtSecondHitRef.current; // cushions at second-hit moment
 
               let keepTurn = false;
               if (breakFoul) {
                 setLastResult(t(lang, 'foulMiss'));
                 keepTurn = false;
-              } else if (bothHit && validCushions) {
-                if (turnRef.current === 1) {
-                  const n = score1Ref.current + 1; score1Ref.current = n; setScore1(n);
+              } else if (bothHit) {
+                // Case A: cue ball contacted 3+ cushions BEFORE hitting the first object ball → +2
+                if (firstCushions >= 3) {
+                  const points = 2;
+                  if (turnRef.current === 1) {
+                    const n = score1Ref.current + points; score1Ref.current = n; setScore1(n);
+                  } else {
+                    const n = score2Ref.current + points; score2Ref.current = n; setScore2(n);
+                  }
+                  setLastResult(t(lang, 'plus2'));
+                  keepTurn = true;
                 } else {
-                  const n = score2Ref.current + 1; score2Ref.current = n; setScore2(n);
+                  // Case B: cue ball hit first object, then accumulated 3+ cushions before striking second → +1
+                  const cushionsAfterFirst = secondCushions - Math.max(0, firstCushions);
+                  if (cushionsAfterFirst >= 3) {
+                    const points = 1;
+                    if (turnRef.current === 1) {
+                      const n = score1Ref.current + points; score1Ref.current = n; setScore1(n);
+                    } else {
+                      const n = score2Ref.current + points; score2Ref.current = n; setScore2(n);
+                    }
+                    setLastResult(t(lang, 'plus1'));
+                    keepTurn = true;
+                  } else {
+                    setLastResult(t(lang, 'miss'));
+                    keepTurn = false;
+                  }
                 }
-                setLastResult(t(lang, 'plus1'));
-                keepTurn = true;
               } else {
                 setLastResult(t(lang, 'miss'));
                 keepTurn = false;
@@ -287,6 +325,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               redBallHitRef.current = false;
               firstBallHitRef.current = null;
               cushionAtSecondHitRef.current = -1;
+              cushionAtFirstHitRef.current = -1;
               cushionCountRef.current = 0;
               // Reset wall hits on both cue balls
               eng.marbles.forEach((m) => { m.wallHitCount = 0; });
@@ -431,12 +470,20 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    const newW = Math.max(320, width);
-    const newH = Math.max(480, height);
-    setSize({ w: newW, h: newH });
-    const boardHeight = newH - 140;
+    const containerW = Math.max(320, width);
+    const containerH = Math.max(480, height);
+    setSize({ w: containerW, h: containerH });
+
+    const boardMaxH = containerH - 140;
+    const desiredBoardH = Math.min(boardMaxH, containerW * 2);
+    const desiredBoardW = desiredBoardH / 2;
+
     if (!engineRef.current) {
-      const eng = new PhysicsEngine(newW, boardHeight);
+      // account for inner border stroke: inset = 6px margin + half stroke (10/2 =5)
+      const INSET = 11; // 6 + 5
+      const innerW = Math.max(4, desiredBoardW - INSET * 2);
+      const innerH = Math.max(4, desiredBoardH - INSET * 2);
+      const eng = new PhysicsEngine(innerW, innerH);
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
       eng.englishFactor = s.englishFactor;
@@ -451,7 +498,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       return;
     }
     const eng = engineRef.current;
-    if (eng) { eng.width = newW; eng.height = boardHeight; }
+    if (eng) { const INSET = 11; eng.width = Math.max(4, desiredBoardW - INSET * 2); eng.height = Math.max(4, desiredBoardH - INSET * 2); }
   };
 
   const pan = useRef(
@@ -486,18 +533,26 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           englishRef.current = 'none'; setEnglish('none');
           return;
         }
-        // Normal aim setup
+        // Normal aim setup — startX/Y = cue ball in physics coords.
+        // Move events convert arenaWrap locationX/Y → physics coords so the direction
+        // "startXY → aim.xy" is correctly "ball → finger" in physics space.
         const eng = engineRef.current;
         const activeCueId = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
         const player = eng && activeCueId != null ? eng.marbles.find((m) => m.id === activeCueId) : null;
-        const sx = player ? player.pos.x : evt.nativeEvent.locationX;
-        const sy = player ? player.pos.y : evt.nativeEvent.locationY;
+        const sx = player ? player.pos.x : 0;
+        const sy = player ? player.pos.y : 0;
         aimingRef.current = { startX: sx, startY: sy, x: sx, y: sy };
       },
       onPanResponderMove: (evt) => {
         if (!aimingRef.current) return;
-        aimingRef.current.x = evt.nativeEvent.locationX;
-        aimingRef.current.y = evt.nativeEvent.locationY;
+        // Convert arenaWrap touch position to physics coords:
+        //   physics_x = locationX − (arenaWrap_width − boardW) / 2 − 11
+        const bH = Math.min(sizeRef.current.h - 140, sizeRef.current.w * 2);
+        const bW = bH / 2;
+        const boardOffX = (sizeRef.current.w - bW) / 2 + 11;
+        const boardOffY = 11;
+        aimingRef.current.x = evt.nativeEvent.locationX - boardOffX;
+        aimingRef.current.y = evt.nativeEvent.locationY - boardOffY;
       },
       onPanResponderRelease: () => {
         if (chargingRef.current) return;
@@ -507,8 +562,9 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
         if (!aim || !eng || !billiardReadyRef.current || activeCueId == null) { aimingRef.current = null; return; }
         const player = eng.marbles.find((m) => m.id === activeCueId);
         if (!player) { aimingRef.current = null; return; }
-        const dx = (aim.x || aim.startX) - player.pos.x;
-        const dy = (aim.y || aim.startY) - player.pos.y;
+        // aim.x/y are now in physics coords; aim.startX/Y = ball pos in physics coords
+        const dx = aim.x - aim.startX;
+        const dy = aim.y - aim.startY;
         const dist = Math.hypot(dx, dy);
         if (dist < 5) { aimingRef.current = null; return; }
         chargeDirectionRef.current = { dx, dy, mag: dist };
@@ -534,6 +590,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     redBallHitRef.current = false;
     firstBallHitRef.current = null;
     cushionAtSecondHitRef.current = -1;
+    cushionAtFirstHitRef.current = -1;
     cushionCountRef.current = 0;
     shotActiveRef.current = false;
     settledCounterRef.current = 0;
@@ -563,7 +620,9 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     setMarbles([...eng.marbles]);
   };
 
-  const boardH = size.h - 140;
+  const boardMaxH = size.h - 140;
+  const boardH = Math.min(boardMaxH, size.w * 2);
+  const boardW = boardH / 2;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -692,16 +751,18 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       </View>
 
       <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <View style={{ width: size.w, height: boardH }}>
-          <Svg width={size.w} height={boardH}>
-            <Rect x={0} y={0} width={size.w} height={boardH} fill="#2d6a4f" />
-            <Rect x={6} y={6} width={size.w - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
+        <View style={{ width: boardW, height: boardH }}>
+          <Svg width={boardW} height={boardH}>
+            <Rect x={0} y={0} width={boardW} height={boardH} fill="#2d6a4f" />
+            <Rect x={6} y={6} width={boardW - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
             <BilliardsMarbles
               marbles={marbles}
               whiteBallId={playerIdRef.current}
               yellowBallId={yellowIdRef.current}
               activeCueId={turn === 1 ? playerIdRef.current : yellowIdRef.current}
               isReady={billiardReady}
+              offsetX={11}
+              offsetY={11}
             />
             <TrajectoryLine
               aim={aimingRef.current}
@@ -714,6 +775,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               chargePower={chargePowerRef.current}
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
+              offsetX={11}
+              offsetY={11}
             />
           </Svg>
           <MagnifierOverlay
@@ -722,12 +785,14 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             chargeDirection={chargeDirectionRef.current}
             engine={engineRef.current}
             activeCueId={turn === 1 ? playerIdRef.current : yellowIdRef.current}
+            offsetX={11}
+            offsetY={11}
           />
           <PickerOverlay
             visible={billiardReady && !(vsAI && turn === 2)}
             pickerContact={pickerContact}
             pickerPos={pickerPos}
-            boardWidth={size.w}
+            boardWidth={boardW}
             pickerPanHandlers={pickerPan.panHandlers as Record<string, unknown>}
             pickerMovePanHandlers={pickerMovePan.panHandlers as Record<string, unknown>}
           />
