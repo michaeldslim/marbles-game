@@ -12,17 +12,17 @@ export const SETTLE_SPEED_THRESHOLD = 0.5;
 export const SETTLE_FRAMES = 30;
 
 // 3-Cushion billiards ball friction (lower = more deceleration)
-export const BILLIARDS_BALL_FRICTION = 0.991;
+export const BILLIARDS_BALL_FRICTION = 0.9935;
 
 // Billiards cue launch speed — effective speed = BILLIARDS_LAUNCH_SPEED * DEFAULT_PLAYER_POWER
-export const BILLIARDS_LAUNCH_SPEED = 220;
+export const BILLIARDS_LAUNCH_SPEED = 250;
 
 // Frames of all-balls-slow before declaring "Ready" in billiards (~0.2s at 60fps)
 export const BILLIARDS_SETTLE_FRAMES = 10;
 
 // 4-Ball billiards (사구) — separate tuning
-export const FOURBALL_BALL_FRICTION = 0.991;
-export const FOURBALL_LAUNCH_SPEED = 220;
+export const FOURBALL_BALL_FRICTION = 0.9935;
+export const FOURBALL_LAUNCH_SPEED = 250;
 export const FOURBALL_SETTLE_FRAMES = 10;
 export const FOURBALL_WIN_SCORE = 10;
 
@@ -50,7 +50,7 @@ export const SIDE_SPIN_CUSHION_RETAIN = 0.6;
 
 // Linear deceleration (px/s²) applied at all speeds to make balls stop sooner.
 // At high speeds this is negligible vs multiplicative friction; at low speeds it dominates.
-export const STOP_DRAG = 6;
+export const STOP_DRAG = 7;
 
 // default length of the trajectory preview line in pixels
 export const TRAJECTORY_LENGTH = 60;
