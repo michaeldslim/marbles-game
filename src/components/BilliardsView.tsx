@@ -62,6 +62,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   const firstBallHitRef = useRef<'yellow' | 'red' | null>(null); // which ball struck first
   const cushionCountRef = useRef<number>(0);           // live cushion count for display
   const cushionAtSecondHitRef = useRef<number>(-1);    // cushions when 2nd ball is struck
+  const cushionAtFirstHitRef = useRef<number>(-1);     // cushions when 1st ball is struck
 
   // Break: first shot must hit red
   const isBreakRef = useRef<boolean>(true);
@@ -223,6 +224,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             yellowHitRef.current = true;
             if (firstBallHitRef.current === null) {
               firstBallHitRef.current = 'yellow';
+              // record cushions at first ball contact
+              cushionAtFirstHitRef.current = c;
             } else {
               // This is the second ball hit — record cushions at this moment
               cushionAtSecondHitRef.current = c;
@@ -235,6 +238,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             redBallHitRef.current = true;
             if (firstBallHitRef.current === null) {
               firstBallHitRef.current = 'red';
+              // record cushions at first ball contact
+              cushionAtFirstHitRef.current = c;
             } else {
               cushionAtSecondHitRef.current = c;
             }
@@ -250,20 +255,42 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               const bothHit  = yellowHitRef.current && redBallHitRef.current;
               const breakFoul = isBreakRef.current && firstBallHitRef.current !== 'red' && firstBallHitRef.current !== null;
               // 3+ cushions accumulated before the second ball was struck
-              const validCushions = cushionAtSecondHitRef.current >= 3;
+              // Determine cushions relative to first and second object contacts.
+              const firstCushions = cushionAtFirstHitRef.current;   // -1 if not set
+              const secondCushions = cushionAtSecondHitRef.current; // cushions at second-hit moment
 
               let keepTurn = false;
               if (breakFoul) {
                 setLastResult(t(lang, 'foulMiss'));
                 keepTurn = false;
-              } else if (bothHit && validCushions) {
-                if (turnRef.current === 1) {
-                  const n = score1Ref.current + 1; score1Ref.current = n; setScore1(n);
+              } else if (bothHit) {
+                // Case A: cue ball contacted 3+ cushions BEFORE hitting the first object ball → +2
+                if (firstCushions >= 3) {
+                  const points = 2;
+                  if (turnRef.current === 1) {
+                    const n = score1Ref.current + points; score1Ref.current = n; setScore1(n);
+                  } else {
+                    const n = score2Ref.current + points; score2Ref.current = n; setScore2(n);
+                  }
+                  setLastResult(t(lang, 'plus2'));
+                  keepTurn = true;
                 } else {
-                  const n = score2Ref.current + 1; score2Ref.current = n; setScore2(n);
+                  // Case B: cue ball hit first object, then accumulated 3+ cushions before striking second → +1
+                  const cushionsAfterFirst = secondCushions - Math.max(0, firstCushions);
+                  if (cushionsAfterFirst >= 3) {
+                    const points = 1;
+                    if (turnRef.current === 1) {
+                      const n = score1Ref.current + points; score1Ref.current = n; setScore1(n);
+                    } else {
+                      const n = score2Ref.current + points; score2Ref.current = n; setScore2(n);
+                    }
+                    setLastResult(t(lang, 'plus1'));
+                    keepTurn = true;
+                  } else {
+                    setLastResult(t(lang, 'miss'));
+                    keepTurn = false;
+                  }
                 }
-                setLastResult(t(lang, 'plus1'));
-                keepTurn = true;
               } else {
                 setLastResult(t(lang, 'miss'));
                 keepTurn = false;
@@ -292,6 +319,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               redBallHitRef.current = false;
               firstBallHitRef.current = null;
               cushionAtSecondHitRef.current = -1;
+              cushionAtFirstHitRef.current = -1;
               cushionCountRef.current = 0;
               // Reset wall hits on both cue balls
               eng.marbles.forEach((m) => { m.wallHitCount = 0; });
@@ -547,6 +575,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     redBallHitRef.current = false;
     firstBallHitRef.current = null;
     cushionAtSecondHitRef.current = -1;
+    cushionAtFirstHitRef.current = -1;
     cushionCountRef.current = 0;
     shotActiveRef.current = false;
     settledCounterRef.current = 0;
