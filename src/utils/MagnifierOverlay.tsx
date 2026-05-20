@@ -37,8 +37,9 @@ export default function MagnifierOverlay({
   if (charging && chargeDirection) {
     ({ dx, dy, mag } = chargeDirection);
   } else if (aim) {
-    dx = (aim.x || aim.startX) - aim.startX;
-    dy = (aim.y || aim.startY) - aim.startY;
+    // aim.x/y and aim.startX/Y are both in physics coords; delta = direction from ball to finger
+    dx = aim.x - aim.startX;
+    dy = aim.y - aim.startY;
     mag = Math.hypot(dx, dy) || 1;
   } else {
     return null;

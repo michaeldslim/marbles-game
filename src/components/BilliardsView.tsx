@@ -197,11 +197,19 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     let rafId: number | null = null;
     const tick = () => {
       const now = Date.now();
-      const dt = (now - last) / 1000;
+      // Cap dt to 50ms to avoid huge jumps after app focus loss
+      const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       const eng = engineRef.current;
       if (eng) {
-        eng.step(dt);
+        // Adaptive sub-stepping: prevent tunneling when fast balls are smaller than
+        // the distance they travel per frame.  Split dt so each sub-step moves the
+        // fastest marble at most half its radius (guarantees overlap detection).
+        const maxSpeed = eng.marbles.reduce((s, m) => Math.max(s, Math.hypot(m.vel.x, m.vel.y)), 0);
+        const minR     = eng.marbles.reduce((s, m) => Math.min(s, m.radius), 8);
+        const subSteps = Math.max(1, Math.ceil(maxSpeed * dt / (minR * 0.5)));
+        const subDt    = dt / subSteps;
+        for (let i = 0; i < subSteps; i++) eng.step(subDt);
 
         if (shotActiveRef.current) {
           const cueId  = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
@@ -527,18 +535,26 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           englishRef.current = 'none'; setEnglish('none');
           return;
         }
-        // Normal aim setup
+        // Normal aim setup — startX/Y = cue ball in physics coords.
+        // Move events convert arenaWrap locationX/Y → physics coords so the direction
+        // "startXY → aim.xy" is correctly "ball → finger" in physics space.
         const eng = engineRef.current;
         const activeCueId = turnRef.current === 1 ? playerIdRef.current : yellowIdRef.current;
         const player = eng && activeCueId != null ? eng.marbles.find((m) => m.id === activeCueId) : null;
-        const sx = player ? player.pos.x : evt.nativeEvent.locationX;
-        const sy = player ? player.pos.y : evt.nativeEvent.locationY;
+        const sx = player ? player.pos.x : 0;
+        const sy = player ? player.pos.y : 0;
         aimingRef.current = { startX: sx, startY: sy, x: sx, y: sy };
       },
       onPanResponderMove: (evt) => {
         if (!aimingRef.current) return;
-        aimingRef.current.x = evt.nativeEvent.locationX;
-        aimingRef.current.y = evt.nativeEvent.locationY;
+        // Convert arenaWrap touch position to physics coords:
+        //   physics_x = locationX − (arenaWrap_width − boardW) / 2 − 11
+        const bH = Math.min(sizeRef.current.h - 140, sizeRef.current.w * 2);
+        const bW = bH / 2;
+        const boardOffX = (sizeRef.current.w - bW) / 2 + 11;
+        const boardOffY = 11;
+        aimingRef.current.x = evt.nativeEvent.locationX - boardOffX;
+        aimingRef.current.y = evt.nativeEvent.locationY - boardOffY;
       },
       onPanResponderRelease: () => {
         if (chargingRef.current) return;
@@ -548,8 +564,9 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
         if (!aim || !eng || !billiardReadyRef.current || activeCueId == null) { aimingRef.current = null; return; }
         const player = eng.marbles.find((m) => m.id === activeCueId);
         if (!player) { aimingRef.current = null; return; }
-        const dx = (aim.x || aim.startX) - player.pos.x;
-        const dy = (aim.y || aim.startY) - player.pos.y;
+        // aim.x/y are now in physics coords; aim.startX/Y = ball pos in physics coords
+        const dx = aim.x - aim.startX;
+        const dy = aim.y - aim.startY;
         const dist = Math.hypot(dx, dy);
         if (dist < 5) { aimingRef.current = null; return; }
         chargeDirectionRef.current = { dx, dy, mag: dist };

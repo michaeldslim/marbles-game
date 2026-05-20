@@ -42,6 +42,8 @@ export interface Settings {
   
   // UI language: 'ko' or 'en'
   language?: 'ko' | 'en';
+  // Internal version for settings migration
+  settingsVersion?: number;
 }
 
 const { width: screenW, height: screenH } = Dimensions.get('window');
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stopDrag:      STOP_DRAG,
   trajectoryLength: TRAJECTORY_LENGTH,
   language: 'ko',
+  settingsVersion: 2,
 };
 
 interface SettingsContextValue {
@@ -87,6 +90,8 @@ const SettingsContext = createContext<SettingsContextValue>({
 });
 
 const STORAGE_KEY = '@marbles_settings';
+// Bump this when stored setting values change meaning (forces migration).
+const SETTINGS_VERSION = 2;
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
@@ -96,7 +101,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (!raw) return;
       try {
-        const saved = JSON.parse(raw) as Partial<Settings>;
+        const saved = JSON.parse(raw) as Partial<Settings> & { settingsVersion?: number };
+        // Version 1 → 2: friction/spinDecay changed from per-step to per-second.
+        // Old values (>0.95) would make balls slide forever; reset to new defaults.
+        if ((saved.settingsVersion ?? 1) < SETTINGS_VERSION) {
+          delete saved.friction3C;
+          delete saved.friction4B;
+          saved.settingsVersion = SETTINGS_VERSION;
+        }
         setSettings((prev) => ({ ...prev, ...saved }));
       } catch {
         // corrupted data — ignore and use defaults
