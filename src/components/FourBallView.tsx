@@ -12,7 +12,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
-import PickerOverlay from '../utils/PickerOverlay';
+import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
 import MagnifierOverlay from '../utils/MagnifierOverlay';
 import TrajectoryLine from '../utils/TrajectoryLine';
 import { Audio } from 'expo-av';
@@ -85,7 +85,6 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
   useEffect(() => { englishRef.current  = english;  }, [english]);
 
   // Cue ball contact point picker
-  const PICKER_R = 54;
   const pickerContactRef = useRef({ x: 0, y: 0 });
   const [pickerContact, setPickerContact] = useState({ x: 0, y: 0 });
   const pickerPan = useRef(
@@ -93,8 +92,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const cx = evt.nativeEvent.locationX - 64;
-        const cy = evt.nativeEvent.locationY - 64;
+        const cx = evt.nativeEvent.locationX - PICKER_HALF;
+        const cy = evt.nativeEvent.locationY - PICKER_HALF;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -106,8 +105,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         setShotType(snapSpin); setEnglish(snapEng);
       },
       onPanResponderMove: (evt) => {
-        const cx = evt.nativeEvent.locationX - 64;
-        const cy = evt.nativeEvent.locationY - 64;
+        const cx = evt.nativeEvent.locationX - PICKER_HALF;
+        const cy = evt.nativeEvent.locationY - PICKER_HALF;
         const dist = Math.hypot(cx, cy);
         const scale = dist > PICKER_R ? PICKER_R / dist : 1;
         const nx = cx * scale; const ny = cy * scale;
@@ -131,20 +130,19 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        const SIZE = 128;
         const boardMaxH = sizeRef.current.h - 140;
         const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
         const boardW = boardH / 2;
-        const cur = pickerPosRef.current ?? { x: Math.max(0, boardW - SIZE - 12), y: 130 };
+        const cur = pickerPosRef.current ?? { x: Math.max(0, boardW - PICKER_SIZE - 12), y: 130 };
         pickerDragStartRef.current = { ...cur };
       },
       onPanResponderMove: (_, g) => {
-        const SIZE = 128; const HANDLE_H = 22;
+        const HANDLE_H = 18;
         const boardMaxH = sizeRef.current.h - 140;
         const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
         const boardW = boardH / 2;
-        const nx = Math.max(0, Math.min(boardW - SIZE, pickerDragStartRef.current.x + g.dx));
-        const ny = Math.max(0, Math.min(boardH - SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
+        const nx = Math.max(0, Math.min(boardW - PICKER_SIZE, pickerDragStartRef.current.x + g.dx));
+        const ny = Math.max(0, Math.min(boardH - PICKER_SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
         pickerPosRef.current = { x: nx, y: ny };
         setPickerPos({ x: nx, y: ny });
       },

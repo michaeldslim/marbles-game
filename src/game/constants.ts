@@ -16,14 +16,14 @@ export const SETTLE_FRAMES = 30;
 export const BILLIARDS_BALL_FRICTION = 0.73;
 
 // Billiards cue launch speed — effective speed = BILLIARDS_LAUNCH_SPEED * DEFAULT_PLAYER_POWER
-export const BILLIARDS_LAUNCH_SPEED = 250;
+export const BILLIARDS_LAUNCH_SPEED = 240;
 
 // Frames of all-balls-slow before declaring "Ready" in billiards (~0.2s at 60fps)
 export const BILLIARDS_SETTLE_FRAMES = 10;
 
 // 4-Ball billiards (사구) — separate tuning
 export const FOURBALL_BALL_FRICTION = 0.73;
-export const FOURBALL_LAUNCH_SPEED = 250;
+export const FOURBALL_LAUNCH_SPEED = 240;
 export const FOURBALL_SETTLE_FRAMES = 10;
 export const FOURBALL_WIN_SCORE = 10;
 
