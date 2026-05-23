@@ -41,7 +41,7 @@ export const SPIN_TRANSFER_FACTOR = 0.5;
 // Applied as a fraction of the normal speed component.
 export const ENGLISH_FACTOR = 0.4;
 
-// Per-second spin decay factor (sub-step safe). Equivalent old per-frame value at 60 fps: ~0.975.
+// Per-second spin decay factor (sub-step safe).
 export const SPIN_DECAY = 0.219;
 
 // Fraction of spin remaining after a marble-marble collision.
