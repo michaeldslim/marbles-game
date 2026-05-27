@@ -42,6 +42,10 @@ export interface Settings {
   
   // UI language: 'ko' or 'en'
   language?: 'ko' | 'en';
+  // Background music volume (0.0 - 1.0)
+  bmVolume?: number;
+  // Background music enabled/disabled
+  bmEnabled?: boolean;
   // Internal version for settings migration
   settingsVersion?: number;
 }
@@ -74,6 +78,8 @@ export const DEFAULT_SETTINGS: Settings = {
   stopDrag:      STOP_DRAG,
   trajectoryLength: TRAJECTORY_LENGTH,
   language: 'ko',
+  bmVolume: 0.2,
+  bmEnabled: false,
   settingsVersion: 2,
 };
 

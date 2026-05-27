@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useSettings, DEFAULT_SETTINGS, BALL_RADIUS_MIN, BALL_RADIUS_MAX } from '../context/SettingsContext';
@@ -282,14 +282,56 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           }}
         />
 
+        {/* ── Audio ─────────────────────────────────────── */}
+        <Text style={styles.section}>Audio  오디오</Text>
+
+          <View style={[styles.row, { paddingBottom: 6 }]}
+          >
+            <View style={styles.rowHeader}>
+              <Text style={styles.rowLabel}>{settings.language === 'ko' ? '배경음' : 'Background Music'}</Text>
+              <Text style={styles.rowValue} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <Switch
+                value={settings.bmEnabled ?? false}
+                onValueChange={(v) => updateSetting('bmEnabled', v)}
+                trackColor={{ true: '#2cc47a', false: '#ccc' }}
+                thumbColor={(settings.bmEnabled ?? false) ? '#fff' : '#fff'}
+              />
+              <Text style={styles.bmToggleText}>
+                {(settings.bmEnabled ?? false) ? (settings.language === 'ko' ? '켜짐' : 'On') : (settings.language === 'ko' ? '끔' : 'Off')}
+              </Text>
+            </View>
+          </View>
+
+        {(settings.bmEnabled ?? false) ? (
+          <SettingRow
+            label="Background Music Volume"
+            labelKo="배경음 볼륨"
+            value={settings.bmVolume ?? 0.2}
+            min={0.0} max={1.0} step={0.01}
+            format={(v) => `${Math.round(v * 100)} %`}
+            onValueChange={(v) => updateSetting('bmVolume', v)}
+            desc={{
+              en: 'Volume level for background mood sound played during Player 1 turns.',
+              ko: '플레이어1 차례 중 재생되는 배경음의 볼륨 레벨.',
+            }}
+          />
+        ) : null}
+
         {/* Default values reference */}
         <View style={styles.defaults}>
           <Text style={styles.defaultsTitle}>Default Values  기본값</Text>
-          {(Object.entries(DEFAULT_SETTINGS) as [string, number][]).map(([k, v]) => (
-            <Text key={k} style={styles.defaultItem}>
-              {k}: <Text style={styles.defaultVal}>{typeof v === 'number' && v % 1 !== 0 ? v.toFixed(4) : v}</Text>
-            </Text>
-          ))}
+          {(Object.entries(DEFAULT_SETTINGS) as [string, any][]).map(([k, v]) => {
+            let displayVal: string | number = v as any;
+            if (typeof v === 'boolean') displayVal = v ? 'true' : 'false';
+            else if (typeof v === 'number' && v % 1 !== 0) displayVal = v.toFixed(4);
+            return (
+              <Text key={k} style={styles.defaultItem}>
+                {k}: <Text style={styles.defaultVal}>{String(displayVal)}</Text>
+              </Text>
+            );
+          })}
         </View>
 
       </ScrollView>
@@ -362,4 +404,5 @@ const styles = StyleSheet.create({
     width: 68, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e8e8e8',
   },
   langActive: { backgroundColor: '#1b4332' },
+  bmToggleText: { marginLeft: 8, fontSize: 13, fontWeight: '700', color: '#1b4332' },
 });

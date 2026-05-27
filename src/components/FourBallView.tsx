@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, AppState, AppStateStatus, Platform } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
 import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
@@ -34,6 +34,8 @@ interface Props {
 export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Element {
   const { settings } = useSettings();
   const s = settings; // shorthand
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   const lang = settings.language ?? 'en';
   const vsAIRef = useRef<boolean>(vsAI);
   useEffect(() => { vsAIRef.current = vsAI; }, [vsAI]);
@@ -54,6 +56,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
   const aimingRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
   const settledCounterRef = useRef<number>(0);
   const hitSoundRef = useRef<Audio.Sound | null>(null);
+  const bmSoundRef = useRef<Audio.Sound | null>(null);
 
   // Ball IDs
   const yellowIdRef = useRef<number | null>(null);
@@ -167,14 +170,60 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       .then(({ sound: s }) => {
         sound = s;
         hitSoundRef.current = s;
-        s.setVolumeAsync(0)
-          .then(() => s.playAsync())
-          .then(() => s.setVolumeAsync(1))
+        s.setVolumeAsync(0.1)
+          .then((_) => s.playAsync())
+          .then((_) => new Promise<void>((res) => setTimeout(res, 250)))
+          .then((_) => s.setVolumeAsync(0.4))
           .catch(() => {});
       })
       .catch(() => {});
     return () => { sound?.unloadAsync(); };
   }, []);
+
+  // Load background/mood sound (bm.mp3) used while Player 1 is taking a turn
+  useEffect(() => {
+    let bm: Audio.Sound;
+    const vol = settings.bmVolume ?? 0.2;
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
+      .then(() => Audio.Sound.createAsync(require('../../assets/sounds/bm.mp3'), { isLooping: true }))
+      .then(({ sound: s }) => {
+        bm = s;
+        bmSoundRef.current = s;
+        s.setVolumeAsync(vol)
+          .then((_) => bm.setPositionAsync(0))
+            .then((_) => { if (settingsRef.current.bmEnabled) return bm.playAsync(); return bm.getStatusAsync(); })
+          .catch(() => {});
+        // Pause/play when app is backgrounded/foregrounded
+        const handleAppState = (next: AppStateStatus) => {
+          if (!bm) return;
+          if (next === 'active') {
+            if (settingsRef.current.bmEnabled) bm.playAsync().catch(() => {});
+          } else bm.stopAsync().catch(() => {});
+        };
+        const sub = AppState.addEventListener('change', handleAppState);
+        (bm as any).__appStateSub = sub;
+      })
+      .catch(() => {});
+    return () => {
+      try { (bm as any)?.__appStateSub?.remove?.(); } catch {}
+      bm?.unloadAsync();
+    };
+  }, []);
+
+  useEffect(() => {
+    const bm = bmSoundRef.current;
+    if (!bm) return;
+    if (settings.bmEnabled) bm.playAsync().catch(() => {});
+    else bm.stopAsync().catch(() => {});
+  }, [settings.bmEnabled]);
+
+  // Keep bm volume in sync with settings changes
+  useEffect(() => {
+    const bm = bmSoundRef.current;
+    if (bm && typeof settings.bmVolume === 'number') {
+      bm.setVolumeAsync(settings.bmVolume).catch(() => {});
+    }
+  }, [settings.bmVolume]);
 
   useEffect(() => { powerRef.current = power; }, [power]);
 
@@ -387,6 +436,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                 const nextTurn = turnRef.current === 'yellow' ? 'white' : 'yellow';
                 turnRef.current = nextTurn;
                 setTurn(nextTurn);
+                // background mood plays continuously; do not stop on turn change
                 // Reset tech buttons for the new player
                 shotTypeRef.current = 'stop';
                 englishRef.current  = 'none';
@@ -478,6 +528,19 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           setPickerContact({ x: 0, y: 0 });
           shotTypeRef.current = 'stop'; setShotType('stop');
           englishRef.current = 'none'; setEnglish('none');
+          // Play bm.mp3 while Player 1 (yellow) is taking a human turn
+          if (turnRef.current === 'yellow') {
+            const bm = bmSoundRef.current;
+            if (bm && settingsRef.current.bmEnabled) {
+              bm.getStatusAsync()
+                .then((status) => {
+                  if (!status || !status.isLoaded) return status;
+                  if (!status.isPlaying) return bm.playAsync();
+                  return status;
+                })
+                .catch(() => {});
+            }
+          }
           return;
         }
         // Normal aim setup — startX/Y = cue ball in physics coords.
@@ -548,6 +611,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     setScore2(0);
     turnRef.current = 'yellow';
     setTurn('yellow');
+    // background mood plays continuously; do not stop on restart here
     shotTypeRef.current = 'stop';
     englishRef.current  = 'none';
     setShotType('stop');
