@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, AppState, AppStateStatus, Platform } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
 import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
@@ -35,6 +35,8 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   useEffect(() => { vsAIRef.current = vsAI; }, [vsAI]);
   const { settings } = useSettings();
   const s = settings; // shorthand
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   const lang = settings.language ?? 'en';
   const [size, setSize] = useState({ w: 360, h: 640 });
   const [marbles, setMarbles] = useState<Marble[]>([]);
@@ -52,6 +54,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   const aimingRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
   const settledCounterRef = useRef<number>(0);
   const hitSoundRef = useRef<Audio.Sound | null>(null);
+  const bmSoundRef = useRef<Audio.Sound | null>(null);
 
   const yellowIdRef = useRef<number | null>(null);
   const redBallIdRef = useRef<number | null>(null);
@@ -163,16 +166,65 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
       .then(() => Audio.Sound.createAsync(require('../../assets/sounds/hit_effect.mp3')))
       .then(({ sound: s }) => {
-        sound = s;
-        hitSoundRef.current = s;
-        s.setVolumeAsync(0)
-          .then(() => s.playAsync())
-          .then(() => s.setVolumeAsync(1))
+          sound = s;
+          hitSoundRef.current = s;
+        s.setVolumeAsync(0.1)
+          .then((_) => s.playAsync())
+          .then((_) => new Promise<void>((res) => setTimeout(res, 250)))
+          .then((_) => s.setVolumeAsync(0.4))
           .catch(() => {});
-      })
+        })
       .catch(() => {});
     return () => { sound?.unloadAsync(); };
   }, []);
+
+  // Load background/mood sound (bm.mp3) used while Player 1 is taking a turn
+  useEffect(() => {
+    let bm: Audio.Sound;
+    const vol = settings.bmVolume ?? 0.2;
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
+      .then(() => Audio.Sound.createAsync(require('../../assets/sounds/bm.mp3'), { isLooping: true }))
+      .then(({ sound: s }) => {
+        bm = s;
+        bmSoundRef.current = s;
+        s.setVolumeAsync(vol)
+          .then((_) => bm.setPositionAsync(0))
+            .then((_) => { if (settingsRef.current.bmEnabled) return bm.playAsync(); return bm.getStatusAsync(); })
+          .catch(() => {});
+        // Pause/play when app is backgrounded/foregrounded
+        const handleAppState = (next: AppStateStatus) => {
+          if (!bm) return;
+          if (next === 'active') {
+            if (settingsRef.current.bmEnabled) bm.playAsync().catch(() => {});
+          } else bm.stopAsync().catch(() => {});
+        };
+        const sub = AppState.addEventListener('change', handleAppState);
+        // ensure listener removed when unloaded
+        (bm as any).__appStateSub = sub;
+      })
+      .catch(() => {});
+    return () => {
+      // remove appstate listener
+      try { (bm as any)?.__appStateSub?.remove?.(); } catch {}
+      bm?.unloadAsync();
+    };
+  }, []);
+
+  // Toggle play/stop when the setting changes
+  useEffect(() => {
+    const bm = bmSoundRef.current;
+    if (!bm) return;
+    if (settings.bmEnabled) bm.playAsync().catch(() => {});
+    else bm.stopAsync().catch(() => {});
+  }, [settings.bmEnabled]);
+
+  // Keep bm volume in sync with settings changes
+  useEffect(() => {
+    const bm = bmSoundRef.current;
+    if (bm && typeof settings.bmVolume === 'number') {
+      bm.setVolumeAsync(settings.bmVolume).catch(() => {});
+    }
+  }, [settings.bmVolume]);
 
   const setupBilliards = (eng: PhysicsEngine) => {
     const w = eng.width;
@@ -311,6 +363,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
                 const next: 1 | 2 = turnRef.current === 1 ? 2 : 1;
                 turnRef.current = next;
                 setTurn(next);
+                // background mood plays continuously; do not stop on turn change
                 // Reset tech buttons for the new player
                 shotTypeRef.current = 'stop';
                 englishRef.current  = 'none';
@@ -531,6 +584,19 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           setPickerContact({ x: 0, y: 0 });
           shotTypeRef.current = 'stop'; setShotType('stop');
           englishRef.current = 'none'; setEnglish('none');
+          // Play background mood sound when Player 1 fires a human-controlled shot
+          if (turnRef.current === 1) {
+            const bm = bmSoundRef.current;
+            if (bm && settingsRef.current.bmEnabled) {
+              bm.getStatusAsync()
+                .then((status) => {
+                  if (!status || !status.isLoaded) return status;
+                  if (!status.isPlaying) return bm.playAsync();
+                  return status;
+                })
+                .catch(() => {});
+            }
+          }
           return;
         }
         // Normal aim setup — startX/Y = cue ball in physics coords.
@@ -609,6 +675,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     setScore1(0);
     setScore2(0);
     setTurn(1);
+    // background mood plays continuously; do not stop on restart here
     setLastResult(null);
     setBilliardReady(true);
     billiardReadyRef.current = true;
