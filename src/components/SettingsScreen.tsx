@@ -313,8 +313,8 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
             format={(v) => `${Math.round(v * 100)} %`}
             onValueChange={(v) => updateSetting('bmVolume', v)}
             desc={{
-              en: 'Volume level for background mood sound played during Player 1 turns.',
-              ko: '플레이어1 차례 중 재생되는 배경음의 볼륨 레벨.',
+              en: 'Volume level for background mood sound.',
+              ko: '게임 플레이중 재생되는 배경음의 볼륨 레벨.',
             }}
           />
         ) : null}
