@@ -498,10 +498,19 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     if (eng) { const INSET = 11; eng.width = Math.max(4, desiredBoardW - INSET * 2); eng.height = Math.max(4, desiredBoardH - INSET * 2); }
   };
 
+  // Stores the arenaWrap's absolute page origin so that move events can use
+  // pageX/pageY (screen-absolute) instead of locationX/Y (relative to whatever
+  // child element is currently under the finger — the picker, for example).
+  const arenaPageOriginRef = useRef({ x: 0, y: 0 });
+
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !(vsAIRef.current && turnRef.current === 'white'),
       onPanResponderGrant: (evt) => {
+        arenaPageOriginRef.current = {
+          x: evt.nativeEvent.pageX - evt.nativeEvent.locationX,
+          y: evt.nativeEvent.pageY - evt.nativeEvent.locationY,
+        };
         // During charging: this tap fires the ball at current power
         if (chargingRef.current) {
           const eng = engineRef.current;
@@ -555,14 +564,14 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       },
       onPanResponderMove: (evt) => {
         if (!aimingRef.current) return;
-        // Convert arenaWrap touch position to physics coords:
-        //   physics_x = locationX − (arenaWrap_width − boardW) / 2 − 11
         const bH = Math.min(sizeRef.current.h - 140, sizeRef.current.w * 2);
         const bW = bH / 2;
         const boardOffX = (sizeRef.current.w - bW) / 2 + 11;
         const boardOffY = 11;
-        aimingRef.current.x = evt.nativeEvent.locationX - boardOffX;
-        aimingRef.current.y = evt.nativeEvent.locationY - boardOffY;
+        const relX = evt.nativeEvent.pageX - arenaPageOriginRef.current.x;
+        const relY = evt.nativeEvent.pageY - arenaPageOriginRef.current.y;
+        aimingRef.current.x = relX - boardOffX;
+        aimingRef.current.y = relY - boardOffY;
       },
       onPanResponderRelease: () => {
         if (chargingRef.current) return;
