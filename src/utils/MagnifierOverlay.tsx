@@ -69,8 +69,8 @@ export default function MagnifierOverlay({
 
   const collX = active.pos.x + ux * minT;
   const collY = active.pos.y + uy * minT;
-  const MAG_SIZE = 110;
-  const ZOOM = 2.0;
+  const MAG_SIZE = 80;
+  const ZOOM = 1.2;
   const worldW = MAG_SIZE / ZOOM;
   const worldH = MAG_SIZE / ZOOM;
   const midX = (collX + hitMarble.pos.x) / 2;
@@ -87,7 +87,7 @@ export default function MagnifierOverlay({
   return (
     <View
       style={{
-        position: 'absolute', top: 12, right: 12,
+        position: 'absolute', top: 17, right: 17,
         width: MAG_SIZE, height: MAG_SIZE,
         borderRadius: MAG_SIZE / 2,
         overflow: 'hidden',

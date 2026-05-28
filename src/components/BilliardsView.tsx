@@ -886,7 +886,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', paddingTop: 2 },
-  arenaWrap: { width: '100%', alignItems: 'center' },
+  arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: '#6B3A2A' },
 
   hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
   statusText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
@@ -913,8 +913,8 @@ const styles = StyleSheet.create({
 
   restartBtn: { width: 60, height: 26, backgroundColor: '#e44', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   restartText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  backBtn: { width: 28, height: 26, backgroundColor: '#666', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  backText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  backBtn: { width: 38, height: 26, backgroundColor: '#e67e22', borderRadius: 5, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 3, elevation: 4 },
+  backText: { color: '#fff', fontWeight: '900', fontSize: 16, textAlign: 'center', textAlignVertical: 'center', lineHeight: 21 },
 
   techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4, height: 58 },
   techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
