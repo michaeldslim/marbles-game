@@ -10,7 +10,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, AppState, AppStateStatus, Platform } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import Svg, { Rect, Defs, Pattern, Image as SvgImage } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
 import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
 import MagnifierOverlay from '../utils/MagnifierOverlay';
@@ -780,8 +780,16 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         </View>
       )}
 
-      <View style={styles.arenaWrap} {...pan.panHandlers}>
-        <View style={{ width: boardW, height: boardH }}>
+      <View style={styles.arenaWrap}>
+        <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={size.w} height={boardH}>
+          <Defs>
+            <Pattern id="woodBg" x="0" y="0" width={150} height={150} patternUnits="userSpaceOnUse">
+              <SvgImage href={require('../../assets/pattern-table.png')} x="0" y="0" width={150} height={150} />
+            </Pattern>
+          </Defs>
+          <Rect x="0" y="0" width={size.w} height={boardH} fill="url(#woodBg)" />
+        </Svg>
+        <View style={{ width: boardW, height: boardH }} {...pan.panHandlers}>
             <Svg width={boardW} height={boardH}>
               <Rect x={0} y={0} width={boardW} height={boardH} fill="#2d6a4f" />
               <Rect x={6} y={6} width={boardW - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
@@ -835,7 +843,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', paddingTop: 2 },
-  arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: '#6B3A2A' },
+  arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
 
   hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
   turnText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
