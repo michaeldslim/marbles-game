@@ -2,7 +2,7 @@
   "expo": {
     "name": "Marbles Game",
     "slug": "marblesgame",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "sdkVersion": "48.0.0",
     "platforms": [
       "ios",
@@ -30,7 +30,7 @@
       "url": "https://u.expo.dev/82ba17ea-a8b3-49fb-965e-b118cf80f54e",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.2.0",
+    "runtimeVersion": "1.3.0",
     "extra": {
       "eas": {
         "projectId": "82ba17ea-a8b3-49fb-965e-b118cf80f54e"
