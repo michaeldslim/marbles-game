@@ -865,6 +865,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               chargePower={chargePowerRef.current}
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
+              disabled={!billiardReady}
               offsetX={11}
               offsetY={11}
             />
@@ -875,6 +876,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             chargeDirection={chargeDirectionRef.current}
             engine={engineRef.current}
             activeCueId={turn === 1 ? playerIdRef.current : yellowIdRef.current}
+            disabled={!billiardReady}
             offsetX={11}
             offsetY={11}
           />

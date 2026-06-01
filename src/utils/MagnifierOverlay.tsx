@@ -13,6 +13,8 @@ type Props = {
   engine: PhysicsEngine | null;
   /** ID of the currently shooting cue ball */
   activeCueId: number | null | undefined;
+  /** When true, nothing is rendered (e.g. shot in flight) */
+  disabled?: boolean;
   offsetX?: number;
   offsetY?: number;
 };
@@ -27,10 +29,11 @@ export default function MagnifierOverlay({
   chargeDirection,
   engine: eng,
   activeCueId,
+  disabled,
   offsetX = 0,
   offsetY = 0,
 }: Props) {
-  if (!eng || activeCueId == null) return null;
+  if (!eng || activeCueId == null || disabled) return null;
   if (!aim && !charging) return null;
 
   let dx: number, dy: number, mag: number;

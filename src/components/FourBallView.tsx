@@ -813,7 +813,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               chargePower={chargePowerRef.current}
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
-              disabled={!!winner}
+              disabled={!!winner || !ready}
               offsetX={11}
               offsetY={11}
             />
@@ -824,6 +824,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
             chargeDirection={chargeDirectionRef.current}
             engine={engineRef.current}
             activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
+            disabled={!ready}
             offsetX={11}
             offsetY={11}
           />
