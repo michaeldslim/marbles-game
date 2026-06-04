@@ -282,6 +282,34 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           }}
         />
 
+        {/* ── Game Rules ─────────────────────────────────── */}
+        <Text style={styles.section}>Game Rules  게임 규칙</Text>
+
+        <SettingRow
+          label="3-Cushion Win Score"
+          labelKo="3쿠션 목표 점수"
+          value={settings.winScore3C}
+          min={3} max={20} step={1}
+          format={(v) => `${v} pts`}
+          onValueChange={(v) => updateSetting('winScore3C', v)}
+          desc={{
+            en: 'Points needed to win a 3-Cushion game. First player to reach this score wins.',
+            ko: '3쿠션 게임에서 승리하기 위해 필요한 점수. 먼저 이 점수에 도달한 플레이어가 승리합니다.',
+          }}
+        />
+        <SettingRow
+          label="4-Ball Win Score"
+          labelKo="사구 목표 점수"
+          value={settings.winScore4B}
+          min={3} max={20} step={1}
+          format={(v) => `${v} pts`}
+          onValueChange={(v) => updateSetting('winScore4B', v)}
+          desc={{
+            en: 'Points needed to win a 4-Ball (사구) game. First player to reach this score wins.',
+            ko: '사구 게임에서 승리하기 위해 필요한 점수. 먼저 이 점수에 도달한 플레이어가 승리합니다.',
+          }}
+        />
+
         {/* ── Audio ─────────────────────────────────────── */}
         <Text style={styles.section}>Audio  오디오</Text>
 

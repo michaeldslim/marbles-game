@@ -13,6 +13,12 @@ import {
   DEFAULT_CHARGE_CYCLES_PER_SEC,
   STOP_DRAG,
   TRAJECTORY_LENGTH,
+  DEFAULT_WIN_SCORE_3C,
+  DEFAULT_WIN_SCORE_4B,
+  DEFAULT_LANGUAGE,
+  DEFAULT_BM_VOLUME,
+  DEFAULT_BM_ENABLED,
+  DEFAULT_SETTINGS_VERSION,
 } from '../game/constants';
 
 export interface Settings {
@@ -39,7 +45,11 @@ export interface Settings {
   stopDrag: number;           // Linear deceleration to help balls stop sooner
 
   trajectoryLength: number;   // Length of the trajectory preview line in pixels
-  
+
+  // Win score targets
+  winScore3C: number;         // Points needed to win a 3-Cushion game
+  winScore4B: number;         // Points needed to win a 4-Ball game
+
   // UI language: 'ko' or 'en'
   language?: 'ko' | 'en';
   // Background music volume (0.0 - 1.0)
@@ -77,10 +87,12 @@ export const DEFAULT_SETTINGS: Settings = {
   englishFactor: ENGLISH_FACTOR,
   stopDrag:      STOP_DRAG,
   trajectoryLength: TRAJECTORY_LENGTH,
-  language: 'ko',
-  bmVolume: 0.2,
-  bmEnabled: false,
-  settingsVersion: 2,
+  winScore3C: DEFAULT_WIN_SCORE_3C,
+  winScore4B: DEFAULT_WIN_SCORE_4B,
+  language: DEFAULT_LANGUAGE,
+  bmVolume: DEFAULT_BM_VOLUME,
+  bmEnabled: DEFAULT_BM_ENABLED,
+  settingsVersion: DEFAULT_SETTINGS_VERSION,
 };
 
 interface SettingsContextValue {
