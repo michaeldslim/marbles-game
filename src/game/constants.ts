@@ -25,7 +25,6 @@ export const BILLIARDS_SETTLE_FRAMES = 10;
 export const FOURBALL_BALL_FRICTION = 0.73;
 export const FOURBALL_LAUNCH_SPEED = 230;
 export const FOURBALL_SETTLE_FRAMES = 10;
-export const FOURBALL_WIN_SCORE = 10;
 
 // Pile marble (triangle rack) settings
 export const PILE_MARBLE_RADIUS = 12;
@@ -56,3 +55,17 @@ export const STOP_DRAG = 7;
 
 // default length of the trajectory preview line in pixels
 export const TRAJECTORY_LENGTH = 60;
+
+// Win score defaults
+export const DEFAULT_WIN_SCORE_3C = 11;
+export const DEFAULT_WIN_SCORE_4B = 10;
+
+// Default UI language
+export const DEFAULT_LANGUAGE = 'ko' as const;
+
+// UI / Audio defaults
+export const DEFAULT_BM_VOLUME = 0.2;
+export const DEFAULT_BM_ENABLED = false;
+
+// Internal version number for settings structure, used for migration when loading old settings
+export const DEFAULT_SETTINGS_VERSION = 2;
