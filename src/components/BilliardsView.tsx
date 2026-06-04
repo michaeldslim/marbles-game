@@ -44,6 +44,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   const score1Ref = useRef<number>(0);
   const [score2, setScore2] = useState<number>(0);
   const score2Ref = useRef<number>(0);
+  const [winner, setWinner] = useState<1 | 2 | null>(null);
   const [turn, setTurn] = useState<1 | 2>(1);
   const turnRef = useRef<1 | 2>(1);
 
@@ -327,8 +328,10 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
                   const points = 2;
                   if (turnRef.current === 1) {
                     const n = score1Ref.current + points; score1Ref.current = n; setScore1(n);
+                    if (n >= settingsRef.current.winScore3C) setWinner(1);
                   } else {
                     const n = score2Ref.current + points; score2Ref.current = n; setScore2(n);
+                    if (n >= settingsRef.current.winScore3C) setWinner(2);
                   }
                   setLastResult(t(lang, 'plus2'));
                   keepTurn = true;
@@ -339,8 +342,10 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
                     const points = 1;
                     if (turnRef.current === 1) {
                       const n = score1Ref.current + points; score1Ref.current = n; setScore1(n);
+                      if (n >= settingsRef.current.winScore3C) setWinner(1);
                     } else {
                       const n = score2Ref.current + points; score2Ref.current = n; setScore2(n);
+                      if (n >= settingsRef.current.winScore3C) setWinner(2);
                     }
                     setLastResult(t(lang, 'plus1'));
                     keepTurn = true;
@@ -411,7 +416,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   // Always aims at a wall first. Plans a 3-wall route (cue→wa→wb→wc→target) via triple
   // reflection. Falls back to 2-wall, then a guaranteed wall-center shot if needed.
   useEffect(() => {
-    if (!vsAI || turn !== 2 || !billiardReady || shotActiveRef.current) return;
+    if (!vsAI || turn !== 2 || !billiardReady || shotActiveRef.current || !!winner) return;
     const timeoutId = setTimeout(() => {
       const eng = engineRef.current;
       const cueId = yellowIdRef.current;
@@ -519,7 +524,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       englishRef.current = 'none'; setEnglish('none');
     }, 600 + Math.random() * 700);
     return () => clearTimeout(timeoutId);
-  }, [turn, billiardReady, vsAI]);
+  }, [turn, billiardReady, vsAI, winner]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -692,6 +697,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     setTurn(1);
     // background mood plays continuously; do not stop on restart here
     setLastResult(null);
+    setWinner(null);
     setBilliardReady(true);
     billiardReadyRef.current = true;
     chargingRef.current = false;
@@ -745,7 +751,18 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
         </View>
       </View>
 
-      {/* Shot technique selector / Power charge meter — same fixed slot */}
+      {winner && (
+        <View style={styles.winBanner}>
+          <Text style={styles.winText}>
+            {winner === 1 ? `⚪ ${t(lang, 'player1')} 🏆` : vsAI ? `🤖 ${t(lang, 'ai')} 🏆` : `🟡 ${t(lang, 'player2')} 🏆`}
+          </Text>
+          <TouchableOpacity style={styles.playAgainBtn} onPress={restart}>
+            <Text style={styles.playAgainText}>{t(lang, 'playAgain')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!winner && (
       <View style={styles.techRow}>
         {vsAI && turn === 2 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -831,6 +848,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           </>
         )}
       </View>
+      )}
 
       <View style={styles.arenaWrap}>
         <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={size.w} height={boardH}>
@@ -920,6 +938,14 @@ const styles = StyleSheet.create({
   resultText: { fontSize: 8, fontWeight: '700', textAlign: 'center' },
   hit: { color: '#2cc47a' },
   miss: { color: '#e44' },
+
+  winBanner: {
+    width: '95%', backgroundColor: '#f4c430', borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', marginBottom: 4, gap: 8,
+  },
+  winText: { fontSize: 20, fontWeight: '800', color: '#111' },
+  playAgainBtn: { backgroundColor: '#111', borderRadius: 6, paddingHorizontal: 20, paddingVertical: 8 },
+  playAgainText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   restartBtn: { width: 60, height: 26, backgroundColor: '#e44', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   restartText: { color: '#fff', fontWeight: '700', fontSize: 11 },

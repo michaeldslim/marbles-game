@@ -21,7 +21,6 @@ import {
   DEFAULT_PLAYER_POWER, 
   SETTLE_SPEED_THRESHOLD, 
   FOURBALL_SETTLE_FRAMES, 
-  FOURBALL_WIN_SCORE, 
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
@@ -407,12 +406,12 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                   const next = score1Ref.current + 1;
                   score1Ref.current = next;
                   setScore1(next);
-                  if (next >= FOURBALL_WIN_SCORE) setWinner('yellow');
+                  if (next >= settingsRef.current.winScore4B) setWinner('yellow');
                 } else {
                   const next = score2Ref.current + 1;
                   score2Ref.current = next;
                   setScore2(next);
-                  if (next >= FOURBALL_WIN_SCORE) setWinner('white');
+                  if (next >= settingsRef.current.winScore4B) setWinner('white');
                 }
                 setLastResult('+1  ' + t(lang, 'bothReds'));
                 keepTurn = true;
