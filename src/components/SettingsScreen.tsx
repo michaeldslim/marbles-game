@@ -11,10 +11,11 @@ interface Props {
 
 // Helper: render a single slider row
 function SettingRow({
-  label, labelKo, value, min, max, step, format, onValueChange, desc,
+  label, labelKo, lang, value, min, max, step, format, onValueChange, desc,
 }: {
   label: string;
   labelKo: string;
+  lang: 'ko' | 'en';
   value: number;
   min: number;
   max: number;
@@ -27,8 +28,6 @@ function SettingRow({
   const [localValue, setLocalValue] = useState<number>(value);
   useEffect(() => { setLocalValue(value); }, [value]);
   const display = format ? format(localValue) : String(Math.round(localValue * 100) / 100);
-  const { settings } = useSettings();
-  const lang = settings.language ?? 'en';
   const displayLabel = lang === 'ko' ? labelKo : label;
   const displayDesc = desc ? (lang === 'ko' ? desc.ko : desc.en) : undefined;
   return (
@@ -70,6 +69,7 @@ function SettingRow({
 
 export default function SettingsScreen({ onBack }: Props): JSX.Element {
   const { settings, updateSetting, resetSettings } = useSettings();
+  const lang = settings.language ?? 'en';
 
   return (
     <View style={styles.container}>
@@ -108,6 +108,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="3-Cushion Ball Radius"
           labelKo="3쿠션 공 반지름"
+          lang={lang}
           value={settings.ballRadius3C}
           min={BALL_RADIUS_MIN} max={BALL_RADIUS_MAX} step={1}
           format={(v) => `${v} px`}
@@ -120,6 +121,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="4-Ball Ball Radius"
           labelKo="사구 공 반지름"
+          lang={lang}
           value={settings.ballRadius4B}
           min={BALL_RADIUS_MIN} max={BALL_RADIUS_MAX} step={1}
           format={(v) => `${v} px`}
@@ -136,6 +138,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="Restitution (Bounciness)"
           labelKo="반발계수 (탄성)"
+          lang={lang}
           value={settings.restitution}
           min={0.5} max={1.0} step={0.01}
           format={(v) => v.toFixed(2)}
@@ -148,6 +151,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="3-Cushion Ball Friction"
           labelKo="3쿠션 마찰"
+          lang={lang}
           value={settings.friction3C}
           min={0.3} max={0.95} step={0.01}
           format={(v) => v.toFixed(2)}
@@ -160,6 +164,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="4-Ball Ball Friction"
           labelKo="사구 마찰"
+          lang={lang}
           value={settings.friction4B}
           min={0.3} max={0.95} step={0.01}
           format={(v) => v.toFixed(2)}
@@ -176,6 +181,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="Power Multiplier"
           labelKo="파워 배율"
+          lang={lang}
           value={settings.playerPower}
           min={1.0} max={10.0} step={0.5}
           format={(v) => `×${v.toFixed(1)}`}
@@ -188,6 +194,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="3-Cushion Launch Speed"
           labelKo="3쿠션 발사 속도"
+          lang={lang}
           value={settings.launchSpeed3C}
           min={100} max={400} step={5}
           format={(v) => `${v}`}
@@ -200,6 +207,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="4-Ball Launch Speed"
           labelKo="사구 발사 속도"
+          lang={lang}
           value={settings.launchSpeed4B}
           min={100} max={400} step={5}
           format={(v) => `${v}`}
@@ -212,6 +220,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="Power Meter Speed"
           labelKo="파워 미터 속도"
+          lang={lang}
           value={settings.chargeCyclesPerSec}
           min={0.3} max={2.0} step={0.1}
           format={(v) => `${v.toFixed(1)} /s`}
@@ -228,6 +237,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="Draw/Follow Transfer"
           labelKo="끌어/밀어치기 전달력"
+          lang={lang}
           value={settings.spinTransfer}
           min={0.1} max={1.0} step={0.05}
           format={(v) => v.toFixed(2)}
@@ -240,6 +250,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="English Factor"
           labelKo="회전(English) 강도"
+          lang={lang}
           value={settings.englishFactor}
           min={0.1} max={0.8} step={0.02}
           format={(v) => v.toFixed(2)}
@@ -256,6 +267,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="Stop Drag"
           labelKo="정지 감속"
+          lang={lang}
           value={settings.stopDrag}
           min={0} max={10} step={1}
           format={(v) => `${v} px/s²`}
@@ -272,6 +284,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="Trajectory Length"
           labelKo="궤적 길이"
+          lang={lang}
           value={settings.trajectoryLength}
           min={10} max={120} step={10}
           format={(v) => `${v} px`}
@@ -288,6 +301,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="3-Cushion Win Score"
           labelKo="3쿠션 목표 점수"
+          lang={lang}
           value={settings.winScore3C}
           min={3} max={20} step={1}
           format={(v) => `${v} pts`}
@@ -300,6 +314,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         <SettingRow
           label="4-Ball Win Score"
           labelKo="사구 목표 점수"
+          lang={lang}
           value={settings.winScore4B}
           min={3} max={20} step={1}
           format={(v) => `${v} pts`}
@@ -336,6 +351,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           <SettingRow
             label="Background Music Volume"
             labelKo="배경음 볼륨"
+            lang={lang}
             value={settings.bmVolume ?? 0.2}
             min={0.0} max={1.0} step={0.01}
             format={(v) => `${Math.round(v * 100)} %`}
