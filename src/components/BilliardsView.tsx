@@ -391,6 +391,11 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
               setBallsHit(0);
               shotActiveRef.current = false;
               settledCounterRef.current = 0;
+              // Reset picker after balls settle
+              pickerContactRef.current = { x: 0, y: 0 };
+              setPickerContact({ x: 0, y: 0 });
+              shotTypeRef.current = 'stop'; setShotType('stop');
+              englishRef.current = 'none'; setEnglish('none');
               setBilliardReady(true);
             }
           }
@@ -596,11 +601,6 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           chargePowerRef.current = 0;
           setChargePower(0);
           chargeDirectionRef.current = null;
-          // Reset picker to default (스톱샷 + 무회전)
-          pickerContactRef.current = { x: 0, y: 0 };
-          setPickerContact({ x: 0, y: 0 });
-          shotTypeRef.current = 'stop'; setShotType('stop');
-          englishRef.current = 'none'; setEnglish('none');
           // Play background mood sound when Player 1 fires a human-controlled shot
           if (turnRef.current === 1) {
             const bm = bmSoundRef.current;

@@ -430,19 +430,18 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               shotActiveRef.current = false;
               settledCounterRef.current = 0;
               setBallsHit(0);
+              // Reset picker after balls settle
+              pickerContactRef.current = { x: 0, y: 0 };
+              setPickerContact({ x: 0, y: 0 });
+              shotTypeRef.current = 'stop'; setShotType('stop');
+              englishRef.current = 'none'; setEnglish('none');
 
               if (!keepTurn) {
                 const nextTurn = turnRef.current === 'yellow' ? 'white' : 'yellow';
                 turnRef.current = nextTurn;
                 setTurn(nextTurn);
                 // background mood plays continuously; do not stop on turn change
-                // Reset tech buttons for the new player
-                shotTypeRef.current = 'stop';
-                englishRef.current  = 'none';
-                setShotType('stop');
-                setEnglish('none');
-                pickerContactRef.current = { x: 0, y: 0 };
-                setPickerContact({ x: 0, y: 0 });
+                // (picker already reset above)
               }
               setReady(true);
             }
@@ -531,11 +530,6 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           chargePowerRef.current = 0;
           setChargePower(0);
           chargeDirectionRef.current = null;
-          // Reset picker to default (스톱샷 + 무회전)
-          pickerContactRef.current = { x: 0, y: 0 };
-          setPickerContact({ x: 0, y: 0 });
-          shotTypeRef.current = 'stop'; setShotType('stop');
-          englishRef.current = 'none'; setEnglish('none');
           // Play bm.mp3 while Player 1 (yellow) is taking a human turn
           if (turnRef.current === 'yellow') {
             const bm = bmSoundRef.current;
