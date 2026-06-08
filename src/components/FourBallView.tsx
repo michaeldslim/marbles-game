@@ -828,7 +828,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
             offsetY={11}
           />
             <PickerOverlay
-            visible={!winner && ready && !(vsAI && turn === 'white')}
+            visible={charging && !(vsAI && turn === 'white')}
             pickerContact={pickerContact}
             pickerPos={pickerPos}
             boardWidth={boardW}

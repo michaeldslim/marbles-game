@@ -899,7 +899,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             offsetY={11}
           />
           <PickerOverlay
-            visible={billiardReady && !(vsAI && turn === 2)}
+            visible={charging && !(vsAI && turn === 2)}
             pickerContact={pickerContact}
             pickerPos={pickerPos}
             boardWidth={boardW}
