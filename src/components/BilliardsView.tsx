@@ -863,6 +863,48 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           <Svg width={boardW} height={boardH}>
             <Rect x={0} y={0} width={boardW} height={boardH} fill="#2d6a4f" />
             <Rect x={6} y={6} width={boardW - 12} height={boardH - 12} fill="none" stroke="#1b4332" strokeWidth={10} />
+            {(() => {
+              const aim = aimingRef.current;
+              if (!aim || charging || !billiardReady) return null;
+              const eng = engineRef.current;
+              if (!eng) return null;
+              const activeCueId = turn === 1 ? playerIdRef.current : yellowIdRef.current;
+              const cue = eng.marbles.find((m) => m.id === activeCueId);
+              if (!cue) return null;
+              const dx = aim.x - aim.startX;
+              const dy = aim.y - aim.startY;
+              if (Math.hypot(dx, dy) < 5) return null;
+              const angleDeg = Math.atan2(-dy, -dx) * 180 / Math.PI;
+              const cx = cue.pos.x + 11;
+              const cy = cue.pos.y + 11;
+              const r = cue.radius;
+              return (
+                <>
+                  {/* Cue shaft */}
+                  <Rect
+                    x={r + 3}
+                    y={-3.5}
+                    width={90}
+                    height={7}
+                    rx={3}
+                    fill="#c8903a"
+                    opacity={0.9}
+                    transform={`translate(${cx} ${cy}) rotate(${angleDeg})`}
+                  />
+                  {/* Cue tip (blue) */}
+                  <Rect
+                    x={r + 1}
+                    y={-2.5}
+                    width={6}
+                    height={5}
+                    rx={1.5}
+                    fill="#4a90d9"
+                    opacity={0.95}
+                    transform={`translate(${cx} ${cy}) rotate(${angleDeg})`}
+                  />
+                </>
+              );
+            })()}
             <BilliardsMarbles
               marbles={marbles}
               whiteBallId={playerIdRef.current}
