@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { StyleSheet, Platform, StatusBar } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import BilliardsView from './src/components/BilliardsView';
 import FourBallView from './src/components/FourBallView';
 import IntroScreen, { GameMode } from './src/components/IntroScreen';
@@ -18,11 +19,16 @@ export default function App(): JSX.Element {
   };
 
   return (
-    <SettingsProvider>
-      <SafeAreaView style={styles.container}>
-        {renderContent()}
-      </SafeAreaView>
-    </SettingsProvider>
+    <SafeAreaProvider>
+      <SettingsProvider>
+        {Platform.OS === 'android' && (
+          <StatusBar translucent={false} backgroundColor="#f7f7f7" barStyle="dark-content" />
+        )}
+        <SafeAreaView style={styles.container}>
+          {renderContent()}
+        </SafeAreaView>
+      </SettingsProvider>
+    </SafeAreaProvider>
   );
 }
 

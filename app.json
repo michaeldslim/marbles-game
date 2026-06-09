@@ -24,7 +24,11 @@
       "bundleIdentifier": "com.mike008.marblesgame"
     },
     "android": {
-      "package": "com.mike008.marblesgame"
+      "package": "com.mike008.marblesgame",
+      "statusBar": {
+        "translucent": false,
+        "backgroundColor": "#f7f7f7"
+      }
     },
     "updates": {
       "url": "https://u.expo.dev/82ba17ea-a8b3-49fb-965e-b118cf80f54e",
