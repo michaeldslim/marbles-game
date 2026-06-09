@@ -631,14 +631,12 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
         // Use pageX/pageY (absolute screen coords) minus the arenaWrap's page
         // origin recorded at gesture start. This is immune to locationX/Y
         // jumping when the finger moves over a child view (e.g. the picker).
-        const bH = Math.min(sizeRef.current.h - 140, sizeRef.current.w * 2);
-        const bW = bH / 2;
-        const boardOffX = (sizeRef.current.w - bW) / 2 + 11;
-        const boardOffY = 11;
         const relX = evt.nativeEvent.pageX - arenaPageOriginRef.current.x;
         const relY = evt.nativeEvent.pageY - arenaPageOriginRef.current.y;
-        aimingRef.current.x = relX - boardOffX;
-        aimingRef.current.y = relY - boardOffY;
+        // arenaPageOriginRef is the board view's screen origin (pan handler is on the board view),
+        // so relX/Y are already relative to the board view. Only subtract the INSET (11px).
+        aimingRef.current.x = relX - 11;
+        aimingRef.current.y = relY - 11;
       },
       onPanResponderRelease: () => {
         if (chargingRef.current) return;
