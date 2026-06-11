@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Circle, Ellipse } from 'react-native-svg';
+import { Circle, Ellipse, Rect } from 'react-native-svg';
 import { Marble } from '../game/physics';
 
 // module-level rotation state store so visual rotation survives component re-renders
@@ -91,18 +91,19 @@ export default function BilliardsMarbles({
               const HIGHLIGHT_DIST = 0.62 * m.radius;
               const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST + offsetX;
               const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST + offsetY;
-              // slightly larger highlight: 18% of radius with 2px minimum for visibility
-              const hr = Math.max(0.18 * m.radius, 2.0);
-              // choose highlight color: darker for white, red for yellow, white for others
+              // render 3x8 pixel square highlights centered at the computed positions
+              const w = 3; // width in px
+              const h = 8; // height in px
+              const rxPos = hx - w / 2;
+              const ryPos = hy - h / 2;
+              const rxPos2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX - w / 2;
+              const ryPos2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY - h / 2;
               const highlightFill = isWhite ? '#888' : isYellow ? '#cc2200' : '#ffffff';
               const highlightOpacity = isWhite ? 0.9 : 0.85;
-              const hx2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX;
-              const hy2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY;
-              // render the original highlight and a second one on the opposite side
               return (
                 <>
-                  <Circle cx={hx} cy={hy} r={hr} fill={highlightFill} opacity={highlightOpacity} />
-                  <Circle cx={hx2} cy={hy2} r={hr} fill={highlightFill} opacity={highlightOpacity} />
+                  <Rect x={rxPos} y={ryPos} width={w} height={h} fill={highlightFill} opacity={highlightOpacity} />
+                  <Rect x={rxPos2} y={ryPos2} width={w} height={h} fill={highlightFill} opacity={highlightOpacity} />
                 </>
               );
             })()}
