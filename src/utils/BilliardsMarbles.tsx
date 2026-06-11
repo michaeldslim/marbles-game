@@ -73,15 +73,12 @@ export default function BilliardsMarbles({
               strokeWidth={isWhite ? 1.5 : 0}
             />
             {(() => {
-              // use a radius-relative min speed so tiny/large balls behave consistently
-              const MIN_SPEED = Math.max(0.05 * m.radius, 0.6); // px/s
-              const speed = Math.hypot(m.vel.x ?? 0, m.vel.y ?? 0);
-              if (speed < MIN_SPEED) return null;
+              // persistent highlight: always render the highlights
               const state = rotStore[m.id] ?? { angle: 0, lastX: m.pos.x, lastY: m.pos.y };
               const dx = m.pos.x - state.lastX;
               const dy = m.pos.y - state.lastY;
               const dist = Math.hypot(dx, dy);
-              // advance angle by arc length / radius (distance travelled corresponds to rotation)
+              // advance angle only when the ball has actually moved
               if (m.radius > 0 && dist > 0) {
                 state.angle += dist / m.radius;
               }
