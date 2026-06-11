@@ -96,7 +96,15 @@ export default function BilliardsMarbles({
               // choose highlight color: darker for white, red for yellow, white for others
               const highlightFill = isWhite ? '#888' : isYellow ? '#cc2200' : '#ffffff';
               const highlightOpacity = isWhite ? 0.9 : 0.85;
-              return <Circle cx={hx} cy={hy} r={hr} fill={highlightFill} opacity={highlightOpacity} />;
+              const hx2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX;
+              const hy2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY;
+              // render the original highlight and a second one on the opposite side
+              return (
+                <>
+                  <Circle cx={hx} cy={hy} r={hr} fill={highlightFill} opacity={highlightOpacity} />
+                  <Circle cx={hx2} cy={hy2} r={hr} fill={highlightFill} opacity={highlightOpacity} />
+                </>
+              );
             })()}
           </React.Fragment>
         );
