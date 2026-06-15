@@ -88,14 +88,14 @@ export default function BilliardsMarbles({
               const HIGHLIGHT_DIST = 0.62 * m.radius;
               const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST + offsetX;
               const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST + offsetY;
-              // render 3x8 pixel square highlights centered at the computed positions
+              // render 3x7 pixel square highlights centered at the computed positions
               const w = 3; // width in px
-              const h = 8; // height in px
+              const h = 7; // height in px
               const rxPos = hx - w / 2;
               const ryPos = hy - h / 2;
               const rxPos2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX - w / 2;
               const ryPos2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY - h / 2;
-              const highlightFill = isWhite ? '#888' : isYellow ? '#cc2200' : '#ffffff';
+              const highlightFill = isWhite ? '#1b1b1b' : isYellow ? '#cc2200' : '#ffffff';
               const highlightOpacity = isWhite ? 0.9 : 0.85;
               return (
                 <>
