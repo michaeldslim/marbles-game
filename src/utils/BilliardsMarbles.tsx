@@ -88,19 +88,19 @@ export default function BilliardsMarbles({
               const HIGHLIGHT_DIST = 0.62 * m.radius;
               const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST + offsetX;
               const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST + offsetY;
-              // render 2x8 pixel square highlights centered at the computed positions
+              // render 2x7 pixel square highlights centered at the computed positions
               const w = 2; // width in px
-              const h = 8; // height in px
+              const h = 7; // height in px
               const rxPos = hx - w / 2;
               const ryPos = hy - h / 2;
-              const rxPos2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX - w / 2;
+              const rxPos2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX - h / 2;
               const ryPos2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY - h / 2;
               const highlightFill = '#000000';
-              const highlightOpacity = isWhite ? 0.9 : 0.85;
+              const highlightOpacity = 0.85;
               return (
                 <>
                   <Rect x={rxPos} y={ryPos} width={w} height={h} fill={highlightFill} opacity={highlightOpacity} />
-                  <Rect x={rxPos2} y={ryPos2} width={w} height={h} fill={highlightFill} opacity={highlightOpacity} />
+                  <Rect x={rxPos2} y={ryPos2} width={h} height={w} fill={highlightFill} opacity={highlightOpacity} />
                 </>
               );
             })()}
