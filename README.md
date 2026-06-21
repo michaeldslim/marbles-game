@@ -76,49 +76,6 @@ eas update --channel production --message "Fix bug / update description"
 
 ---
 
-## Game Modes / 게임 모드
-
-### 1. 3-Cushion Billiards / 3쿠션 당구
-
-#### How to Play / 게임 방법
-
-| | English | 한국어 |
-|---|---|---|
-| **Objective** | Score points by making the cue ball touch 3+ cushions before hitting the 2nd object ball | 큐볼이 2번째 목적구를 맞히기 전에 쿠션을 3회 이상 맞혀야 득점 |
-| **Break rule** | On the very first shot, the cue ball must hit the **red ball** first. Hitting yellow first = foul | 첫 번째 샷(브레이크)에서는 반드시 **빨간 공**을 먼저 맞혀야 합니다. 노란 공을 먼저 맞히면 파울 |
-| **Scoring** | Hit both object balls with 3+ cushions before 2nd contact → **+1 pt**, keep shooting | 2번째 공 접촉 전에 쿠션 3회 이상 + 두 공 모두 맞히면 **+1점**, 연속 샷 가능 |
-| **Miss** | Failed to meet conditions → turn ends, no penalty | 조건 미달 → 턴 종료, 패널티 없음 |
-| **Turn** | Players alternate turns on a miss | 미스 시 턴이 상대방에게 넘어감 |
-| **Balls** | ⚪ White (Player 1 cue) · 🟡 Yellow (Player 2 cue) · 🔴 Red (object ball) | 흰 공(Player 1 큐볼) · 노란 공(Player 2 큐볼) · 빨간 공(목적구) |
-
-#### How to Shoot / 조준 및 발사 방법
-
-- **Aim / 조준**: Drag your finger on the screen in the direction you want to shoot. A dotted trajectory line shows the predicted path. · 화면을 드래그하면 점선으로 예상 경로가 표시됩니다.
-- **Release / 발사**: Lift your finger to fire. · 손을 떼면 큐볼이 발사됩니다.
-- **Active cue ball** is highlighted with a white ring. · 현재 턴의 큐볼에 흰색 링이 표시됩니다.
-
----
-
-### 2. 4-Ball Billiards / 사구 (四球)
-
-#### How to Play / 게임 방법
-
-| | English | 한국어 |
-|---|---|---|
-| **Objective** | Hit **both red balls** with your cue ball in a single shot → +1 pt | 한 번의 샷으로 **빨간 공 2개를 모두** 큐볼로 맞히면 +1점 |
-| **Scoring** | Both reds hit → **+1 pt**, keep shooting | 두 빨간 공 모두 맞히면 **+1점**, 연속 샷 가능 |
-| **Miss** | Failed to hit both reds → turn changes, no penalty | 두 빨간 공을 모두 맞히지 못하면 턴 교체, 패널티 없음 |
-| **Foul** | Cue ball hits the **opponent's cue ball** → **−1 pt**, turn changes | 큐볼이 **상대방 큐볼**을 맞히면 **−1점**, 턴 교체 |
-| **Win condition** | First player to reach **20 points** wins | 먼저 **10점**에 도달한 플레이어가 승리 |
-| **Balls** | 🟡 Yellow (Player 1 cue) · ⚪ White (Player 2 cue) · 🔴🔴 Two red balls (object balls) | 노란 공(Player 1 큐볼) · 흰 공(Player 2 큐볼) · 빨간 공 2개(목적구) |
-
-#### How to Shoot / 조준 및 발사 방법
-
-Same drag-and-release controls as 3-Cushion. The active cue ball is highlighted with a white ring.  
-3쿠션과 동일한 드래그 조작 방식. 현재 턴의 큐볼에 흰색 링이 표시됩니다.
-
----
-
 ## Shot Techniques / 구현된 기술
 
 두 게임 모드 모두 샷 전에 아래 기술을 선택할 수 있습니다.  
@@ -135,7 +92,7 @@ Both game modes support the following shot techniques, selectable before each sh
 ### Side Spin (English) / 좌우 회전 — 영어 (하단 버튼 행)
 
 | Button | Korean | English | Physics Effect / 물리 효과 |
-|---|---|---|---|
+|---|---|---|--|
 | **왼회전** | 왼회전 | Left English | 큐볼에 좌측 사이드 스핀을 주어 쿠션 반사 시 왼쪽으로 편향됩니다. · Left side-spin; ball deflects left off cushions. |
 | **무회전** | 무회전 | Center ball (No English) | 사이드 스핀 없음. 기본 반사 각도 유지. · No side-spin; standard reflection angle. |
 | **오른회전** | 오른회전 | Right English | 큐볼에 우측 사이드 스핀을 주어 쿠션 반사 시 오른쪽으로 편향됩니다. · Right side-spin; ball deflects right off cushions. |
