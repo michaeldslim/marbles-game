@@ -88,7 +88,7 @@ export default function BilliardsMarbles({
               const HIGHLIGHT_DIST = 0.62 * m.radius;
               const hx = m.pos.x + Math.cos(state.angle) * HIGHLIGHT_DIST + offsetX;
               const hy = m.pos.y + Math.sin(state.angle) * HIGHLIGHT_DIST + offsetY;
-              // render 2x7 pixel square highlights centered at the computed positions
+              // render 3x7 pixel square highlights centered at the computed positions
               const w = 3; // width in px
               const h = 7; // height in px
               const rxPos = hx - w / 2;
