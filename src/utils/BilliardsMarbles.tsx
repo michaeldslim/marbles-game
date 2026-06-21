@@ -91,8 +91,8 @@ export default function BilliardsMarbles({
               r={m.radius * 0.4}
               fill="url(#ballHighlightGradient)"
             />
+            {/* 4. 지속적 하이라이트 (Persistent Highlight) */}
             {(() => {
-              // persistent highlight: always render the highlights
               const state = rotStore[m.id] ?? { angle: 0, lastX: m.pos.x, lastY: m.pos.y };
               const dx = m.pos.x - state.lastX;
               const dy = m.pos.y - state.lastY;
