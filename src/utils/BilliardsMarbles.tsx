@@ -94,7 +94,7 @@ export default function BilliardsMarbles({
               const rxPos = hx - w / 2;
               const ryPos = hy - h / 2;
               const rxPos2 = m.pos.x + Math.cos(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetX - h / 2;
-              const ryPos2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY - h / 2;
+              const ryPos2 = m.pos.y + Math.sin(state.angle + Math.PI) * HIGHLIGHT_DIST + offsetY - w / 2;
               const highlightFill = '#000000';
               const highlightOpacity = 0.85;
               return (
