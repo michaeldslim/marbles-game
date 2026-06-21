@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Circle, Ellipse, Rect } from 'react-native-svg';
+import { Circle, Defs, Ellipse, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Marble } from '../game/physics';
 
 // module-level rotation state store so visual rotation survives component re-renders
@@ -45,8 +45,17 @@ export default function BilliardsMarbles({
       if (!ids.has(id)) delete rotStore[id];
     }
   }, [marbles]);
+  
   return (
     <>
+      <Defs>
+        {/* 공의 입체감을 위한 하이라이트용 그라데이션 */}
+        <RadialGradient id="ballHighlightGradient" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0%" stopColor="white" stopOpacity={0.8} />
+          <Stop offset="100%" stopColor="white" stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+
       {marbles.map((m) => {
         if (m.captured) return null;
         const isWhite = m.id === whiteBallId;
@@ -61,16 +70,26 @@ export default function BilliardsMarbles({
                 fill="none" stroke="#fff" strokeWidth={2} strokeOpacity={0.7}
               />
             )}
+            {/* 1. 바닥 그림자 (Ambient Occlusion/Shadow) */}
             <Ellipse
-              cx={m.pos.x + offsetX} cy={m.pos.y + offsetY + m.radius * 0.6}
-              rx={m.radius * 1.15} ry={m.radius * 0.5}
-              fill="#000" opacity={0.12}
+              cx={m.pos.x + offsetX} cy={m.pos.y + offsetY + m.radius * 0.7}
+              rx={m.radius * 1.2} ry={m.radius * 0.4}
+              fill="#000" opacity={0.2}
             />
+            {/* 2. 공 본체 */}
             <Circle
               cx={m.pos.x + offsetX} cy={m.pos.y + offsetY} r={m.radius}
               fill={m.color || '#fff'}
               stroke={isWhite ? '#999' : 'none'}
               strokeWidth={isWhite ? 1.5 : 0}
+            />
+            {/* 3. 하이라이트 (Specular Highlight) */}
+            {/* 광원을 왼쪽 상단(offset -radius*0.3)으로 가정하여 계산 */}
+            <Circle
+              cx={m.pos.x + offsetX - m.radius * 0.3}
+              cy={m.pos.y + offsetY - m.radius * 0.3}
+              r={m.radius * 0.4}
+              fill="url(#ballHighlightGradient)"
             />
             {(() => {
               // persistent highlight: always render the highlights
