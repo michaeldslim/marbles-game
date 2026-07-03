@@ -1,0 +1,186 @@
+---
+description: HUD and in-game UI modernization plan — follow when improving game screens, navigation buttons, or shared UI components
+globs: src/components/**/*.tsx,src/context/SettingsContext.tsx,src/i18n.ts
+alwaysApply: false
+---
+
+# HUD & In-Game UI Improvement Plan
+
+## Current State
+
+- **Stack:** Expo / React Native, no UI library; `StyleSheet` + hardcoded hex colors.
+- **HUD location:** Duplicated inline in `BilliardsView.tsx` and `FourBallView.tsx` (~95% identical).
+- **Layout budget:** `BOARD_UI_GAP = 140` in `SettingsContext.tsx` — used for ball-size math and board height.
+- **Navigation:** Orange `←` back (38×26) + red “Restart” pill (60×26) in same row as turn text.
+- **i18n:** `t(lang, 'back')` exists but is unused; restart uses `t(lang, 'restart')`.
+
+### HUD rows today
+
+| Row | Content |
+|-----|---------|
+| 1 | Back + Restart + turn/shot text |
+| 2 | Score chips + center stats (7–8px labels) |
+| 3 | Win banner (gold, conditional) |
+| 4 | Spin/english buttons, power meter, or AI thinking (fixed 58px) |
+
+### What feels dated
+
+- Cramped typography (7–11px in scoreboard)
+- Flat orange/red nav pills inconsistent with Settings green header
+- No shared theme or reusable UI primitives
+- Emoji-heavy player labels; weak visual hierarchy
+- Gray segmented tech buttons; power meter lacks container
+- Four stacked strips instead of one cohesive panel
+
+The play area (wood texture, green felt, SVG balls) is stronger than the HUD above it.
+
+---
+
+## Design Direction
+
+**Goal:** Modern billiards-themed HUD — one panel above the table, not four separate strips.
+
+**Principles:**
+
+1. Unify with table palette (dark green `#1b4332`, felt `#2d6a4f`, wood) — not random orange/red pills
+2. Navigation secondary; turn + scores primary
+3. Min ~44pt touch targets for back/restart (currently 26px height)
+4. Larger type, consistent spacing, subtle depth (shadows/borders)
+5. Extract shared components before visual polish
+
+**Tone:** Sports scoreboard / pool hall — dark bar, light text, accents `#2cc47a` (success/turn), `#f4c430` (gold), `#f4a020` (shot).
+
+---
+
+## Target Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  [← Back]                              [↻ Restart]    │  Row A: nav (subtle)
+├─────────────────────────────────────────────────────────┤
+│  P1  12  │  Cushions 2/3 · Balls 1/2  │  AI  8        │  Row B: scoreboard
+│          │         +1 / Miss            │               │
+├─────────────────────────────────────────────────────────┤
+│  [Draw] [Stop] [Follow]    [Left] [None] [Right]        │  Row C: controls / power
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Back & Restart Buttons
+
+### Back
+
+- Dedicated nav row (left); move turn text to scoreboard
+- Icon + `t(lang, 'back')` label (icon-only fallback on narrow screens)
+- Ghost/outline on dark green — match Settings header pattern
+- Reuse same component in `SettingsScreen.tsx` and both game views
+
+### Restart
+
+- Nav row (right); icon ↻ + optional short label
+- **Confirmation dialog** before reset (prevents accidental taps)
+- Destructive red only in confirm action, not as always-visible loud pill
+- Win banner “Play Again” can call same `restart` after confirm or skip confirm on win state
+
+---
+
+## Scoreboard & Controls
+
+### Scoreboard
+
+- Labels 11–12px min; scores 18–22px
+- Active player: filled accent or left accent bar (not border-only)
+- Center stats: single line with dividers (`Cushions 2/3 · Balls 1/2`)
+- Reduce emoji reliance — colored dot or marble indicator for P1/P2/AI
+- Fix hardcoded `'⚪ Player 2'` in `FourBallView.tsx` — use i18n
+
+### Technique row
+
+- Segmented control (rounded track, sliding active indicator) for spin and english
+- Section labels: “Spin” / “English” (10px uppercase muted)
+- Power meter inside dark rounded card; cancel button aligned
+- AI thinking: subtle animation instead of static gray text
+- Revisit fixed 58px height — may need 64–72px; update `BOARD_UI_GAP` if changed
+
+### Win state
+
+- Overlay modal on dimmed table (trophy + winner + Play Again + Back to menu)
+- Avoid inline gold banner that pushes layout
+
+---
+
+## Architecture (implement in this order)
+
+| Step | File(s) | Purpose |
+|------|---------|---------|
+| 1 | `src/theme.ts` | Colors, spacing, radii, typography scale |
+| 2 | `src/components/ui/IconButton.tsx` | Back, restart, settings |
+| 3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
+| 4 | `src/components/ui/PowerMeter.tsx` | Charge UI |
+| 5 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
+| 6 | `src/i18n.ts` | Add `confirmRestart`, `menu`, section labels if needed |
+
+**Refactor targets:** `BilliardsView.tsx`, `FourBallView.tsx` (replace inline HUD), `SettingsScreen.tsx` (shared back), `SettingsContext.tsx` (gap constant).
+
+**Do not add** a heavy UI library — use RN core + `@expo/vector-icons` (already in Expo).
+
+---
+
+## Visual Spec
+
+```
+HUD panel:       #1b4332 bg, borderRadius 12, marginHorizontal 8, padding 12
+Nav buttons:     44×44 touch area, icon #fff @ 70%, pressed @ 100%
+Restart confirm: accent #e44
+Score cards:     #2d6a4f on dark HUD; active #2cc47a 2px border or 4px left bar
+Text primary:    #fff on dark HUD
+Text muted:      #a8c5b8
+Accents:         #2cc47a success, #f4a020 shot, #e44 miss/foul, #f4c430 win
+```
+
+---
+
+## Phased Implementation
+
+### Phase 1 — Foundation
+- Add `theme.ts`
+- Build `IconButton` + `GameHudNav` (back, restart with confirm)
+- Wire into both game views; use `t(lang, 'back')`
+
+### Phase 2 — Scoreboard
+- Extract `Scoreboard` with slots for 3-cushion vs 4-ball center content
+- Typography + active-player treatment; relocate turn/status
+
+### Phase 3 — Controls
+- `SegmentedControl`, `PowerMeter` card, AI thinking polish
+
+### Phase 4 — Win flow & consistency
+- Win overlay modal; align Intro + Settings with theme tokens
+
+### Phase 5 — Polish (optional)
+- `expo-haptics` on press; light transitions; dark HUD mode
+
+---
+
+## Constraints
+
+1. Retest ball sizing if `BOARD_UI_GAP` changes from 140
+2. Test Korean strings (“재시작”, “뒤로”) on small screens
+3. Keep game logic untouched — UI-only changes in components/styles
+4. Any HUD edit today requires two files until `GameHud` is extracted — prioritize extraction first
+
+---
+
+## Implementation Checklist
+
+- [ ] `src/theme.ts` created
+- [ ] Shared `IconButton` / nav bar
+- [ ] Restart confirmation dialog
+- [ ] `GameHud` extracted from duplicated views
+- [ ] Scoreboard typography + active states
+- [ ] Segmented controls for spin/english
+- [ ] Power meter container
+- [ ] Win overlay modal
+- [ ] i18n gaps filled (`back`, `confirmRestart`, FourBall player labels)
+- [ ] `BOARD_UI_GAP` updated and layout verified on device
