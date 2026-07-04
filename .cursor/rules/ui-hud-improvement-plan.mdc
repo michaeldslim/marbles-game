@@ -12,7 +12,8 @@ alwaysApply: false
 - **HUD location:** Duplicated inline in `BilliardsView.tsx` and `FourBallView.tsx` (~95% identical).
 - **Layout budget:** `BOARD_UI_GAP = 140` in `SettingsContext.tsx` — used for ball-size math and board height.
 - **Navigation:** Shared `GameHudNav` — dark green bar with chevron Back + refresh Restart (confirm dialog). Turn/shot text in separate `statusRow` below.
-- **i18n:** `t(lang, 'back')` exists but is unused; restart uses `t(lang, 'restart')`.
+- **i18n:** `t(lang, 'back')` used in nav; restart uses `t(lang, 'restart')`.
+- **AI:** Inline `useEffect` in `BilliardsView.tsx` (~110 lines) and `FourBallView.tsx` (~90 lines). No difficulty setting; no shared module. 3-Cushion uses wall-reflection geometry but does **not** validate scoring rules (3 cushions before 2nd ball, break must hit red first). 4-Ball has ghost-ball / follow logic but does **not** avoid opponent-cue fouls (−1 pt).
 
 ### HUD rows today
 
@@ -120,11 +121,12 @@ The play area (wood texture, green felt, SVG balls, rail alignment dots) is stro
 | 4 | 1 | `src/components/ui/ConfirmDialog.tsx` | Restart confirmation (or `Alert` wrapper) |
 | 5 | 1 | `src/i18n.ts` | `confirmRestart`, `confirmRestartMessage`, `cancel` |
 | 6 | 1 | `src/utils/RailMarkers.tsx` | White alignment dots on left/right wooden rails |
-| 7 | 2–3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
-| 8 | 3 | `src/components/ui/PowerMeter.tsx` | Charge UI |
-| 9 | 2 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
+| 7 | **1.5** | `src/game/ai/*`, `SettingsContext`, `SettingsScreen` | Rule-aware AI + difficulty levels |
+| 8 | 2–3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
+| 9 | 3 | `src/components/ui/PowerMeter.tsx` | Charge UI |
+| 10 | 2 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
 
-**Refactor targets:** `BilliardsView.tsx`, `FourBallView.tsx` (replace inline HUD), `SettingsScreen.tsx` (shared back), `SettingsContext.tsx` (gap constant).
+**Refactor targets:** `BilliardsView.tsx`, `FourBallView.tsx` (replace inline HUD + inline AI), `SettingsScreen.tsx` (shared back + AI level), `SettingsContext.tsx` (gap constant + `aiLevel`).
 
 **Do not add** a heavy UI library — use RN core + `@expo/vector-icons` (already in Expo).
 
@@ -289,6 +291,203 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 
 ---
 
+### Phase 1.5 — AI difficulty & rule-aware play
+
+**Status:** Not started  
+**Scope:** Extract AI from game views into shared modules; add Settings picker for difficulty; improve shot selection so AI respects 3-Cushion and 4-Ball scoring rules. No HUD visual redesign — reuse existing “AI thinking…” row.
+
+**Why now (between Phase 1 and 2):** AI logic is duplicated and embedded in views like the old HUD. Difficulty belongs in Settings alongside win-score rules. Better AI makes vs-AI mode playable before scoreboard polish.
+
+#### Current AI gaps (baseline to beat)
+
+| Game | What works today | What’s missing |
+|------|------------------|----------------|
+| **3-Cushion** | 3-wall / 2-wall reflection paths to object balls; random aim spread; follow spin | Does not score paths by **rule compliance** (+1: 3 cushions between 1st and 2nd object ball; +2: 3 cushions before any object ball). Break shot can hit yellow first → foul. Picks shortest geometric path, not highest **expected points**. No english / spin tuning for cushion count. |
+| **4-Ball** | Follow-through when reds align; ghost-ball cut when not | Can hit **opponent cue** → foul −1. No safety / defensive shot when no clear score. Spread and power not scaled by difficulty. |
+
+#### In scope
+
+| Task | Deliverable |
+|------|-------------|
+| AI level setting | `aiLevel` in `Settings` + persisted; picker in `SettingsScreen` |
+| Shared AI module | `src/game/ai/` — geometry helpers, difficulty profile, per-game planners |
+| 3-Cushion planner | Rule-aware candidate scoring; break respects red-first |
+| 4-Ball planner | Score-seeking shots that avoid opponent cue; optional safety fallback |
+| View integration | Replace inline `useEffect` AI blocks with `planBilliardsShot` / `planFourBallShot` |
+| i18n | Level labels + settings section title (EN/KO) |
+
+#### Out of scope (defer)
+
+- Full physics simulation per candidate (too slow on device) — use geometric heuristics + optional light ray-march later
+- AI learning / ML
+- Separate per-game difficulty (one global `aiLevel` is enough for v1)
+- HUD changes beyond existing `aiThinking` text
+
+#### 1. `aiLevel` setting
+
+```ts
+// src/game/ai/types.ts
+export type AiLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+export interface AiProfile {
+  thinkDelayMs: [number, number];   // min/max before shot
+  aimSpreadRad: number;             // random angle noise (±)
+  powerJitter: number;              // ± fraction on computed power
+  ruleAwareness: number;            // 0–1: weight rule-valid paths vs raw geometry
+  foulAvoidance: number;            // 0–1: penalty weight for opponent-cue risk (4B)
+  useSpin: boolean;                 // draw/follow/english tuning
+  safetyBias: number;               // 0–1: prefer leave-hard shots when no score
+}
+```
+
+| Level | EN label | KO label | Character |
+|-------|----------|----------|-----------|
+| `beginner` | Beginner | 초보 | Wide spread, slow think, often picks geometric shortest path even if foul/miss |
+| `intermediate` | Intermediate | 중급 | Moderate spread; prefers rule-valid 3C paths; basic 4B foul avoidance |
+| `advanced` | Advanced | 고급 | Tight spread; scores candidates by expected points; spin for cushion routes |
+| `expert` | Expert | 전문가 | Minimal spread; break + safety awareness; best valid shot among top candidates |
+
+**`SettingsContext.tsx`**
+
+- Add `aiLevel: AiLevel` to `Settings`, default `'intermediate'`
+- Bump `SETTINGS_VERSION` to 3 for migration
+- Add to `DEFAULT_SETTINGS`
+
+**`SettingsScreen.tsx`**
+
+- New section **“AI  인공지능”** (after Game Rules or before Audio)
+- Segmented row or pill picker (reuse Phase 2 `SegmentedControl` pattern if available; otherwise simple `TouchableOpacity` row matching language toggle style)
+- Help text: level affects vs-AI opponents in both 3-Cushion and 4-Ball
+
+#### 2. Module layout
+
+```
+src/game/ai/
+  types.ts           — AiLevel, AiProfile, ShotPlan, BoardState
+  profiles.ts        — AI_PROFILES: Record<AiLevel, AiProfile>
+  geometry.ts        — mirroring, wall hits, ghost ball (extract from views)
+  billiardsAi.ts     — planBilliardsShot(state, profile) → ShotPlan
+  fourBallAi.ts      — planFourBallShot(state, profile) → ShotPlan
+  index.ts           — re-exports
+```
+
+**`ShotPlan`** (shared return type):
+
+```ts
+export interface ShotPlan {
+  dx: number;
+  dy: number;
+  spin: number;
+  sideSpin: number;
+  power: number;        // 0–1 multiplier before launchSpeed * playerPower
+}
+```
+
+Views keep: turn gating, `setTimeout` think delay from profile, `eng.launchMarble`, shot-active flags.
+
+#### 3. 3-Cushion rule-aware planner (`billiardsAi.ts`)
+
+**Input:** cue, red, white (opponent cue), table W×H, `isBreak`, physics constants from settings.
+
+**Candidate generation** (extend current triple-reflection loops):
+
+1. For each final target ball order (red then white, white then red — only orders valid for scoring)
+2. For each 3-cushion and 2-cushion wall sequence (existing `wa/wb/wc` loops)
+3. Compute aim vector + predicted cushion count at 1st object hit and at 2nd object hit
+
+**Scoring each candidate** (higher = better):
+
+| Signal | Weight |
+|--------|--------|
+| Valid +1 (≥3 cushions between 1st and 2nd object contact) | +100 |
+| Valid +2 (≥3 cushions before any object contact) | +120 |
+| Break: first contact is red | required or heavy penalty |
+| Path length (shorter) | small tie-break |
+| Invalid (fewer than 3 cushions before 2nd ball) | −80 |
+
+Multiply rule term weights by `profile.ruleAwareness`. At **beginner**, still add randomness so AI sometimes picks invalid paths.
+
+**Break shot:** When `isBreak`, filter or penalize candidates whose first object contact is not red.
+
+**Spin:** For advanced/expert, set `spin` / `sideSpin` to nudge cushion count (follow through cushions, english for position) — start with fixed follow on long routes like today, expand later.
+
+#### 4. 4-Ball rule-aware planner (`fourBallAi.ts`)
+
+**Input:** cue, red1, red2, opponent cue, table bounds.
+
+**Candidate shots:**
+
+1. **Carom / follow** — cue → red1 → red2 (existing alignment check)
+2. **Ghost-ball cut** — cue → redA → deflect toward redB (existing)
+3. **Direct second red** — if both reds nearly aligned from cue
+4. **Safety** (intermediate+): leave cue far from reds and away from opponent cue when no score line exists
+
+**Foul avoidance:** For each candidate, ray/segment check whether opponent cue lies within `2×radius` of cue path after first contact. Penalize by `profile.foulAvoidance × 150`. Expert almost never picks high-foul paths.
+
+**Scoring:**
+
+| Signal | Weight |
+|--------|--------|
+| Both reds hittable in one shot | +100 |
+| Single red only | +20 |
+| Opponent cue hit risk | −(foulAvoidance × 150) |
+| Safety leave (hard for opponent) | +(safetyBias × 40) |
+
+#### 5. View integration (minimal diff)
+
+**`BilliardsView.tsx`** — replace AI `useEffect` body with:
+
+```ts
+import { planBilliardsShot, getAiProfile } from '../game/ai';
+
+const profile = getAiProfile(settings.aiLevel);
+const [minMs, maxMs] = profile.thinkDelayMs;
+// ... after delay:
+const plan = planBilliardsShot({ cue, red, white, W, H, isBreak: isBreakRef.current, ... }, profile);
+// apply plan.spin, plan.sideSpin, launch with plan power
+```
+
+**`FourBallView.tsx`** — same pattern with `planFourBallShot`.
+
+Remove duplicated `mir` / `hit` / ghost-ball helpers from views once extracted to `geometry.ts`.
+
+#### 6. i18n keys
+
+| Key | EN | KO |
+|-----|----|----|
+| `aiLevel` | AI difficulty | AI 난이도 |
+| `aiLevelBeginner` | Beginner | 초보 |
+| `aiLevelIntermediate` | Intermediate | 중급 |
+| `aiLevelAdvanced` | Advanced | 고급 |
+| `aiLevelExpert` | Expert | 전문가 |
+| `aiLevelDesc` | Affects vs-AI opponents in 3-Cushion and 4-Ball. | 3쿠션·사구 AI 대전 난이도에 적용됩니다. |
+
+#### 7. Acceptance criteria
+
+- [ ] Settings shows AI level picker; persists across app restarts
+- [ ] Beginner misses more often and fouls more; Expert scores more reliably in vs-AI smoke tests
+- [ ] 3-Cushion AI: break shots target red first; non-break shots prefer paths with ≥3 cushions before 2nd object ball when level ≥ intermediate
+- [ ] 4-Ball AI: avoids opponent cue at advanced/expert; no regression on basic carom shots
+- [ ] AI logic lives in `src/game/ai/` — not duplicated across views
+- [ ] Human 2P mode unchanged; `aiLevel` only applies when `vsAI={true}`
+- [ ] Game scoring / foul rules in views unchanged — AI only improves shot selection
+
+#### Phase 1.5 file checklist
+
+- [ ] `src/game/ai/types.ts`
+- [ ] `src/game/ai/profiles.ts`
+- [ ] `src/game/ai/geometry.ts`
+- [ ] `src/game/ai/billiardsAi.ts`
+- [ ] `src/game/ai/fourBallAi.ts`
+- [ ] `src/game/ai/index.ts`
+- [ ] `SettingsContext.tsx` — `aiLevel`, version bump
+- [ ] `SettingsScreen.tsx` — AI level picker
+- [ ] `src/i18n.ts` — level strings
+- [ ] `BilliardsView.tsx` — use planner
+- [ ] `FourBallView.tsx` — use planner
+
+---
+
 ### Phase 2 — Scoreboard
 - Extract `Scoreboard` with slots for 3-cushion vs 4-ball center content
 - Typography + active-player treatment; relocate turn/status
@@ -307,9 +506,10 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 ## Constraints
 
 1. Retest ball sizing if `BOARD_UI_GAP` changes from 140
-2. Test Korean strings (“재시작”, “뒤로”) on small screens
-3. Keep game logic untouched — UI-only changes in components/styles
+2. Test Korean strings (“재시작”, “뒤로”, AI level labels) on small screens
+3. HUD phases: keep scoring/foul **rules** in views — UI-only. Phase 1.5 AI is isolated shot planning; do not change settle/score logic
 4. Any HUD edit today requires two files until `GameHud` is extracted — prioritize extraction first
+5. AI planners must stay fast enough for mobile (candidate cap ~200 paths per shot; no full physics replay)
 
 ---
 
@@ -322,6 +522,14 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 - [x] Wired in `BilliardsView`, `FourBallView`, `SettingsScreen`
 - [x] Nav touch targets ≥ 44pt; restart confirm works
 - [x] `RailMarkers` on playboard rails (both game views; responsive layout)
+
+### Phase 1.5
+- [ ] `src/game/ai/` module + difficulty profiles
+- [ ] `aiLevel` in Settings + picker UI
+- [ ] Rule-aware 3-Cushion planner (break + cushion count)
+- [ ] Rule-aware 4-Ball planner (foul avoidance + safety)
+- [ ] Views wired to planners; inline AI removed
+- [ ] i18n: AI level labels
 
 ### Phase 2+
 - [ ] `GameHud` extracted from duplicated views
