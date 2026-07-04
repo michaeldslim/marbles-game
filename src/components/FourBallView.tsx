@@ -28,6 +28,7 @@ import { t } from '../i18n';
 import GameHudNav from './ui/GameHudNav';
 import { BOARD_UI_GAP } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
+import { getAiProfile, planFourBallShot, randomThinkDelayMs } from '../game/ai';
 
 interface Props {
   onBack: () => void;
@@ -250,6 +251,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
   // AI shot: fires when it's white's turn in vsAI mode
   useEffect(() => {
     if (!vsAI || turn !== 'white' || !ready || !!winner) return;
+    const profile = getAiProfile(settings.aiLevel ?? 'intermediate');
     const timeoutId = setTimeout(() => {
       const eng = engineRef.current;
       const cueId = playerIdRef.current;
@@ -257,89 +259,37 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       const cue  = eng.marbles.find((m) => m.id === cueId);
       const red1 = eng.marbles.find((m) => m.id === red1IdRef.current);
       const red2 = eng.marbles.find((m) => m.id === red2IdRef.current);
-      if (!cue || !red1 || !red2) return;
+      const opponent = eng.marbles.find((m) => m.id === yellowIdRef.current);
+      if (!cue || !red1 || !red2 || !opponent) return;
 
-      // Pick the closer red as the primary target, the other as secondary
-      const d1 = Math.hypot(red1.pos.x - cue.pos.x, red1.pos.y - cue.pos.y);
-      const d2 = Math.hypot(red2.pos.x - cue.pos.x, red2.pos.y - cue.pos.y);
-      const [primary, secondary] = d1 <= d2 ? [red1, red2] : [red2, red1];
-      const primaryDist = d1 <= d2 ? d1 : d2;
+      const plan = planFourBallShot(
+        {
+          cue: { pos: cue.pos, radius: cue.radius },
+          red1: { pos: red1.pos, radius: red1.radius },
+          red2: { pos: red2.pos, radius: red2.radius },
+          opponentCue: { pos: opponent.pos, radius: opponent.radius },
+          tableW: eng.width,
+          tableH: eng.height,
+        },
+        profile,
+      );
 
-      // Unit vectors
-      const cueToPrimN = { x: (primary.pos.x - cue.pos.x) / primaryDist, y: (primary.pos.y - cue.pos.y) / primaryDist };
-      const primToSec = { x: secondary.pos.x - primary.pos.x, y: secondary.pos.y - primary.pos.y };
-      const primToSecMag = Math.hypot(primToSec.x, primToSec.y);
-      const primToSecN = { x: primToSec.x / primToSecMag, y: primToSec.y / primToSecMag };
+      const mag = Math.hypot(plan.dx, plan.dy) || 1;
+      const speed = s.launchSpeed4B * powerRef.current * plan.power;
 
-      // alignment > 0: secondary is roughly in the same direction as primary from cue
-      const alignment = cueToPrimN.x * primToSecN.x + cueToPrimN.y * primToSecN.y;
-
-      let dx: number;
-      let dy: number;
-      let spinVal: number;
-
-      if (alignment > 0.5) {
-        // ── Follow shot: secondary is roughly behind primary → shoot through with topspin
-        dx = primary.pos.x - cue.pos.x;
-        dy = primary.pos.y - cue.pos.y;
-        spinVal = 0.65;
-      } else {
-        // ── Ghost-ball cut shot: aim so the cue deflects toward secondary after stop contact
-        // Contact normal ⊥ primToSecN; two candidates (left / right side of primary)
-        const contactDist = primary.radius + cue.radius;
-        const nA = { x: -primToSecN.y, y:  primToSecN.x };
-        const nB = { x:  primToSecN.y, y: -primToSecN.x };
-        const ghostA = { x: primary.pos.x + nA.x * contactDist, y: primary.pos.y + nA.y * contactDist };
-        const ghostB = { x: primary.pos.x + nB.x * contactDist, y: primary.pos.y + nB.y * contactDist };
-
-        // Score each ghost: positive means cue's post-contact tangential velocity points toward secondary
-        const scoreGhost = (g: { x: number; y: number }) => {
-          const toG = { x: g.x - cue.pos.x, y: g.y - cue.pos.y };
-          const toGMag = Math.hypot(toG.x, toG.y);
-          const toGN = { x: toG.x / toGMag, y: toG.y / toGMag };
-          const cn = { x: (g.x - primary.pos.x) / contactDist, y: (g.y - primary.pos.y) / contactDist };
-          const proj = toGN.x * cn.x + toGN.y * cn.y;
-          // tangential component of shot direction (what the cue retains after stop contact)
-          return (toGN.x - proj * cn.x) * primToSecN.x + (toGN.y - proj * cn.y) * primToSecN.y;
-        };
-
-        const ghost = scoreGhost(ghostA) >= scoreGhost(ghostB) ? ghostA : ghostB;
-        const m = cue.radius * 2;
-        const inBounds = ghost.x > m && ghost.x < eng.width - m && ghost.y > m && ghost.y < eng.height - m;
-
-        dx = inBounds ? ghost.x - cue.pos.x : primary.pos.x - cue.pos.x;
-        dy = inBounds ? ghost.y - cue.pos.y : primary.pos.y - cue.pos.y;
-        spinVal = 0; // stop shot — preserves the deflection angle
-      }
-
-      // Small random spread: tighter for cut shots (precision matters more)
-      const spreadRange = alignment > 0.5 ? 0.32 : 0.22;
-      const spread = (Math.random() - 0.5) * spreadRange;
-      const cosS = Math.cos(spread);
-      const sinS = Math.sin(spread);
-      const rdx = dx * cosS - dy * sinS;
-      const rdy = dx * sinS + dy * cosS;
-
-      const mag = Math.hypot(rdx, rdy);
-      // Distance-based power using primary distance (60–90%)
-      const distFactor = Math.min(primaryDist / (eng.height * 0.6), 1);
-      const power = 0.6 + distFactor * 0.3;
-      const speed = s.launchSpeed4B * powerRef.current * power;
-
-      cue.spin = spinVal;
-      cue.sideSpin = 0;
-      eng.launchMarble(cueId, { x: (rdx / mag) * speed, y: (rdy / mag) * speed });
+      cue.spin = plan.spin;
+      cue.sideSpin = plan.sideSpin;
+      eng.launchMarble(cueId, { x: (plan.dx / mag) * speed, y: (plan.dy / mag) * speed });
       shotActiveRef.current = true;
       setReady(false);
       readyRef.current = false;
-      // Reset picker to default (스톱샷 + 무회전)
       pickerContactRef.current = { x: 0, y: 0 };
       setPickerContact({ x: 0, y: 0 });
       shotTypeRef.current = 'stop'; setShotType('stop');
       englishRef.current = 'none'; setEnglish('none');
-    }, 600 + Math.random() * 700); // 600–1300ms random delay
+    }, randomThinkDelayMs(profile));
     return () => clearTimeout(timeoutId);
-  }, [turn, ready, winner, vsAI]);
+  }, [turn, ready, winner, vsAI, settings.aiLevel]);
 
   const setupBalls = (eng: PhysicsEngine) => {
     const w = eng.width;

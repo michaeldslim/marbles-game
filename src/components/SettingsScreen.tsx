@@ -7,6 +7,8 @@ import { useSettings, DEFAULT_SETTINGS, BALL_RADIUS_MIN, BALL_RADIUS_MAX } from 
 import { t } from '../i18n';
 import IconButton from './ui/IconButton';
 import { hud } from '../theme';
+import { AI_LEVELS } from '../game/ai';
+import type { AiLevel } from '../game/ai';
 
 interface Props {
   onBack: () => void;
@@ -332,6 +334,37 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           }}
         />
 
+        {/* ── AI ───────────────────────────────────────── */}
+        <Text style={styles.section}>AI  인공지능</Text>
+
+        <View style={styles.row}>
+          <View style={styles.rowHeader}>
+            <Text style={styles.rowLabel}>{t(lang, 'aiLevel')}</Text>
+          </View>
+          <Text style={styles.aiLevelDesc}>{t(lang, 'aiLevelDesc')}</Text>
+          <View style={styles.aiLevelRow}>
+            {AI_LEVELS.map((level) => {
+              const active = settings.aiLevel === level;
+              const labelKey = `aiLevel${level.charAt(0).toUpperCase()}${level.slice(1)}` as
+                | 'aiLevelBeginner'
+                | 'aiLevelIntermediate'
+                | 'aiLevelAdvanced'
+                | 'aiLevelExpert';
+              return (
+                <TouchableOpacity
+                  key={level}
+                  style={[styles.aiLevelBtn, active ? styles.aiLevelActive : null]}
+                  onPress={() => updateSetting('aiLevel', level as AiLevel)}
+                >
+                  <Text style={[styles.aiLevelBtnText, active ? styles.aiLevelBtnTextActive : null]}>
+                    {t(lang, labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* ── Audio ─────────────────────────────────────── */}
         <Text style={styles.section}>Audio  오디오</Text>
 
@@ -450,5 +483,18 @@ const styles = StyleSheet.create({
     width: 68, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e8e8e8',
   },
   langActive: { backgroundColor: '#1b4332' },
+  aiLevelDesc: { fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 17 },
+  aiLevelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  aiLevelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#e8e8e8',
+    minWidth: 72,
+    alignItems: 'center',
+  },
+  aiLevelActive: { backgroundColor: '#1b4332' },
+  aiLevelBtnText: { fontSize: 12, fontWeight: '700', color: '#1b4332' },
+  aiLevelBtnTextActive: { color: '#fff' },
   bmToggleText: { marginLeft: 8, fontSize: 13, fontWeight: '700', color: '#1b4332' },
 });
