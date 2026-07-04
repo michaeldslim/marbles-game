@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BOARD_UI_GAP } from '../theme';
 import {
   BILLIARDS_BALL_FRICTION,
   FOURBALL_BALL_FRICTION,
@@ -62,10 +63,9 @@ export interface Settings {
 
 const { width: screenW, height: screenH } = Dimensions.get('window');
 // Compute an AUTO_BALL_RADIUS that fits a 1:2 (W:H) playboard placed within the
-// available window height (reserve ~140px for HUD). Convert real-world ball
+// available window height (reserve HUD chrome). Convert real-world ball
 // radius (61.5mm diameter → 30.75mm radius) to pixels using board pixel height
 // with 1 inch = 2.54 cm conversion.
-const BOARD_UI_GAP = 140;
 const BALL_RADIUS_M = 0.03075; // 30.75 mm
 const boardMaxH = Math.max(320, screenH - BOARD_UI_GAP);
 const desiredBoardH = Math.min(boardMaxH, Math.max(320, screenW) * 2);

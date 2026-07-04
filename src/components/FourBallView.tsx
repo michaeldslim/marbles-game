@@ -24,6 +24,9 @@ import {
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
+import GameHudNav from './ui/GameHudNav';
+import { BOARD_UI_GAP } from '../theme';
+import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
 
 interface Props {
   onBack: () => void;
@@ -39,6 +42,27 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
   const vsAIRef = useRef<boolean>(vsAI);
   useEffect(() => { vsAIRef.current = vsAI; }, [vsAI]);
   const [size, setSize] = useState({ w: 360, h: 640 });
+  const [hudHeight, setHudHeight] = useState(BOARD_UI_GAP);
+  const hudHeightRef = useRef(BOARD_UI_GAP);
+  useEffect(() => { hudHeightRef.current = hudHeight; }, [hudHeight]);
+
+  const syncEngineLayout = (innerW: number, innerH: number) => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    if (eng.width === innerW && eng.height === innerH) return;
+    eng.width = innerW;
+    eng.height = innerH;
+    for (const m of eng.marbles) {
+      if (m.captured) continue;
+      m.pos.x = Math.max(m.radius, Math.min(innerW - m.radius, m.pos.x));
+      m.pos.y = Math.max(m.radius, Math.min(innerH - m.radius, m.pos.y));
+    }
+  };
+
+  useEffect(() => {
+    const { innerW, innerH } = computeBoardDimensions(size.w, size.h, hudHeight);
+    syncEngineLayout(innerW, innerH);
+  }, [size.w, size.h, hudHeight]);
   const [marbles, setMarbles] = useState<Marble[]>([]);
 
   // Separate scores per player
@@ -132,17 +156,13 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        const boardMaxH = sizeRef.current.h - 140;
-        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
-        const boardW = boardH / 2;
+        const { boardW, boardH } = computeBoardDimensions(sizeRef.current.w, sizeRef.current.h, hudHeightRef.current);
         const cur = pickerPosRef.current ?? { x: Math.max(0, boardW - PICKER_SIZE - 12), y: 130 };
         pickerDragStartRef.current = { ...cur };
       },
       onPanResponderMove: (_, g) => {
         const HANDLE_H = 18;
-        const boardMaxH = sizeRef.current.h - 140;
-        const boardH = Math.min(boardMaxH, sizeRef.current.w * 2);
-        const boardW = boardH / 2;
+        const { boardW, boardH } = computeBoardDimensions(sizeRef.current.w, sizeRef.current.h, hudHeightRef.current);
         const nx = Math.max(0, Math.min(boardW - PICKER_SIZE, pickerDragStartRef.current.x + g.dx));
         const ny = Math.max(0, Math.min(boardH - PICKER_SIZE - HANDLE_H, pickerDragStartRef.current.y + g.dy));
         pickerPosRef.current = { x: nx, y: ny };
@@ -470,14 +490,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     const containerH = Math.max(480, height);
     setSize({ w: containerW, h: containerH });
 
-    const boardMaxH = containerH - 140;
-    const desiredBoardH = Math.min(boardMaxH, containerW * 2);
-    const desiredBoardW = desiredBoardH / 2;
+    const { boardW, boardH, innerW, innerH } = computeBoardDimensions(containerW, containerH, hudHeightRef.current);
 
     if (!engineRef.current) {
-      const INSET = 11; // 6px margin + 5px half stroke
-      const innerW = Math.max(4, desiredBoardW - INSET * 2);
-      const innerH = Math.max(4, desiredBoardH - INSET * 2);
       const eng = new PhysicsEngine(innerW, innerH);
       eng.restitution = s.restitution;
       eng.spinTransferFactor = s.spinTransfer;
@@ -492,11 +507,10 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
       setMarbles([...eng.marbles]);
       return;
     }
-    const eng = engineRef.current;
-    if (eng) { const INSET = 11; eng.width = Math.max(4, desiredBoardW - INSET * 2); eng.height = Math.max(4, desiredBoardH - INSET * 2); }
+    syncEngineLayout(innerW, innerH);
   };
 
-  // Stores the arenaWrap's absolute page origin so that move events can use
+  // Stores the arenaWrap's absolute page origin
   // pageX/pageY (screen-absolute) instead of locationX/Y (relative to whatever
   // child element is currently under the finger — the picker, for example).
   const arenaPageOriginRef = useRef({ x: 0, y: 0 });
@@ -561,8 +575,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         const relY = evt.nativeEvent.pageY - arenaPageOriginRef.current.y;
         // arenaPageOriginRef is the board view's screen origin (pan handler is on the board view),
         // so relX/Y are already relative to the board view. Only subtract the INSET (11px).
-        aimingRef.current.x = relX - 11;
-        aimingRef.current.y = relY - 11;
+        aimingRef.current.x = relX - BOARD_INSET;
+        aimingRef.current.y = relY - BOARD_INSET;
       },
       onPanResponderRelease: () => {
         if (chargingRef.current) return;
@@ -630,28 +644,34 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     setMarbles([...eng.marbles]);
   };
 
-  const boardMaxH = size.h - 140;
-  const boardH = Math.min(boardMaxH, size.w * 2);
-  const boardW = boardH / 2;
+  const { boardW, boardH } = computeBoardDimensions(size.w, size.h, hudHeight);
+
+  const onHudLayout = (height: number) => {
+    const h = Math.ceil(height);
+    if (h > 0 && h !== hudHeight) setHudHeight(h);
+  };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
 
-      {/* Top bar */}
-      <View style={styles.hudRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.restartBtn} onPress={restart}>
-          <Text style={styles.restartText}>{t(lang, 'restart')}</Text>
-        </TouchableOpacity>
-        {ready && !winner && (
-          <Text style={[styles.turnText, turn === 'yellow' ? styles.yellowTurn : styles.whiteTurn]}>
-            {turn === 'yellow' ? `🟡 ${t(lang, 'player1')}` : vsAI ? `🤖 ${t(lang, 'ai')}` : `⚪ ${t(lang, 'player2')}`} {t(lang,'turnSuffix')}
-          </Text>
-        )}
-        {!ready && !winner && <Text style={styles.shotText}>{t(lang, 'shot')}</Text>}
-      </View>
+      <View
+        style={styles.hudChrome}
+        onLayout={(e) => onHudLayout(e.nativeEvent.layout.height)}
+      >
+      <GameHudNav
+        lang={lang}
+        onBack={onBack}
+        onRestart={restart}
+        center={
+          ready && !winner ? (
+            <Text style={[styles.turnText, turn === 'yellow' ? styles.yellowTurn : styles.whiteTurn]} numberOfLines={1}>
+              {turn === 'yellow' ? `🟡 ${t(lang, 'player1')}` : vsAI ? `🤖 ${t(lang, 'ai')}` : `⚪ ${t(lang, 'player2')}`} {t(lang,'turnSuffix')}
+            </Text>
+          ) : !winner ? (
+            <Text style={styles.shotText} numberOfLines={1}>{t(lang, 'shot')}</Text>
+          ) : null
+        }
+      />
 
       {/* Scoreboard */}
       <View style={styles.scoreRow}>
@@ -771,6 +791,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         </View>
       )}
 
+      </View>
+
+      <View style={styles.arenaShell}>
       <View style={styles.arenaWrap}>
         <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={size.w} height={boardH}>
           <Defs>
@@ -796,8 +819,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
                 const dy = aim.y - aim.startY;
                 if (Math.hypot(dx, dy) < 5) return null;
                 const angleDeg = Math.atan2(-dy, -dx) * 180 / Math.PI;
-                const cx = cue.pos.x + 11;
-                const cy = cue.pos.y + 11;
+                const cx = cue.pos.x + BOARD_INSET;
+                const cy = cue.pos.y + BOARD_INSET;
                 const r = cue.radius;
                 return (
                   <>
@@ -832,8 +855,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               yellowBallId={yellowIdRef.current}
               activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
               isReady={!winner && ready}
-              offsetX={11}
-              offsetY={11}
+              offsetX={BOARD_INSET}
+              offsetY={BOARD_INSET}
             />
             <TrajectoryLine
               aim={aimingRef.current}
@@ -847,8 +870,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
               english={englishRef.current}
               trajectoryLength={s.trajectoryLength}
               disabled={!!winner || !ready}
-              offsetX={11}
-              offsetY={11}
+              offsetX={BOARD_INSET}
+              offsetY={BOARD_INSET}
             />
           </Svg>
           <MagnifierOverlay
@@ -858,8 +881,8 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
             engine={engineRef.current}
             activeCueId={turn === 'yellow' ? yellowIdRef.current : playerIdRef.current}
             disabled={!ready}
-            offsetX={11}
-            offsetY={11}
+            offsetX={BOARD_INSET}
+            offsetY={BOARD_INSET}
           />
             <PickerOverlay
             visible={charging && !(vsAI && turn === 'white')}
@@ -871,19 +894,21 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           />
         </View>
       </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', paddingTop: 2 },
+  hudChrome: { width: '100%', alignItems: 'center' },
+  arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
 
-  hudRow: { width: '95%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
-  turnText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  turnText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
   yellowTurn: { color: '#2cc47a' },
   whiteTurn: { color: '#2cc47a' },
-  shotText: { flex: 1, fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
+  shotText: { fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
 
   scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
   scoreCard: {
@@ -909,11 +934,6 @@ const styles = StyleSheet.create({
   winText: { fontSize: 20, fontWeight: '800', color: '#111' },
   playAgainBtn: { backgroundColor: '#111', borderRadius: 6, paddingHorizontal: 20, paddingVertical: 8 },
   playAgainText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
-  restartBtn: { width: 60, height: 26, backgroundColor: '#e44', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  restartText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  backBtn: { width: 38, height: 26, backgroundColor: '#e67e22', borderRadius: 5, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 3, elevation: 4 },
-  backText: { color: '#fff', fontWeight: '900', fontSize: 16, textAlign: 'center', textAlignVertical: 'center', lineHeight: 21 },
 
   techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4, height: 58 },
   techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },

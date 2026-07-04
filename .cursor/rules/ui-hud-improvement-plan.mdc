@@ -11,7 +11,7 @@ alwaysApply: false
 - **Stack:** Expo / React Native, no UI library; `StyleSheet` + hardcoded hex colors.
 - **HUD location:** Duplicated inline in `BilliardsView.tsx` and `FourBallView.tsx` (~95% identical).
 - **Layout budget:** `BOARD_UI_GAP = 140` in `SettingsContext.tsx` — used for ball-size math and board height.
-- **Navigation:** Orange `←` back (38×26) + red “Restart” pill (60×26) in same row as turn text.
+- **Navigation:** Shared `GameHudNav` — dark green bar with chevron Back + refresh Restart (confirm dialog). Turn/shot text in separate `statusRow` below.
 - **i18n:** `t(lang, 'back')` exists but is unused; restart uses `t(lang, 'restart')`.
 
 ### HUD rows today
@@ -112,14 +112,16 @@ The play area (wood texture, green felt, SVG balls) is stronger than the HUD abo
 
 ## Architecture (implement in this order)
 
-| Step | File(s) | Purpose |
-|------|---------|---------|
-| 1 | `src/theme.ts` | Colors, spacing, radii, typography scale |
-| 2 | `src/components/ui/IconButton.tsx` | Back, restart, settings |
-| 3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
-| 4 | `src/components/ui/PowerMeter.tsx` | Charge UI |
-| 5 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
-| 6 | `src/i18n.ts` | Add `confirmRestart`, `menu`, section labels if needed |
+| Step | Phase | File(s) | Purpose |
+|------|-------|---------|---------|
+| 1 | 1 | `src/theme.ts` | Colors, spacing, radii, typography scale |
+| 2 | 1 | `src/components/ui/IconButton.tsx` | Back, restart, settings |
+| 3 | 1 | `src/components/ui/GameHudNav.tsx` | Nav row: back + restart with confirm |
+| 4 | 1 | `src/components/ui/ConfirmDialog.tsx` | Restart confirmation (or `Alert` wrapper) |
+| 5 | 1 | `src/i18n.ts` | `confirmRestart`, `confirmRestartMessage`, `cancel` |
+| 6 | 2–3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
+| 7 | 3 | `src/components/ui/PowerMeter.tsx` | Charge UI |
+| 8 | 2 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
 
 **Refactor targets:** `BilliardsView.tsx`, `FourBallView.tsx` (replace inline HUD), `SettingsScreen.tsx` (shared back), `SettingsContext.tsx` (gap constant).
 
@@ -143,10 +145,134 @@ Accents:         #2cc47a success, #f4a020 shot, #e44 miss/foul, #f4c430 win
 
 ## Phased Implementation
 
-### Phase 1 — Foundation
-- Add `theme.ts`
-- Build `IconButton` + `GameHudNav` (back, restart with confirm)
-- Wire into both game views; use `t(lang, 'back')`
+### Phase 1 — Foundation (nav + theme)
+
+**Status:** Done  
+**Scope:** Shared design tokens, reusable nav buttons, restart confirm dialog. Scoreboard / tech row / win banner stay unchanged until Phase 2+.
+
+#### In scope
+
+| Task | Deliverable |
+|------|-------------|
+| Design tokens | `src/theme.ts` |
+| Generic pressable | `src/components/ui/IconButton.tsx` |
+| Game nav row | `src/components/ui/GameHudNav.tsx` |
+| Confirm dialog | `src/components/ui/ConfirmDialog.tsx` (or RN `Alert.alert` wrapper) |
+| i18n | `confirmRestart`, `confirmRestartMessage`, `cancel` in `src/i18n.ts` |
+| Integration | Replace inline back/restart in `BilliardsView`, `FourBallView`, `SettingsScreen` back |
+
+#### Out of scope (defer)
+
+- Full `GameHud` shell extraction
+- Scoreboard redesign, segmented controls, power meter card, win overlay
+- Intro screen button restyle
+
+#### 1. `src/theme.ts`
+
+Centralize tokens used by Phase 1 nav (expand in later phases):
+
+```ts
+export const colors = {
+  hudBg: '#1b4332',
+  felt: '#2d6a4f',
+  textOnDark: '#ffffff',
+  textMuted: '#a8c5b8',
+  navGhost: 'rgba(255,255,255,0.12)',
+  navGhostPressed: 'rgba(255,255,255,0.22)',
+  danger: '#e44',
+  accent: '#2cc47a',
+};
+export const spacing = { xs: 4, sm: 8, md: 12, lg: 16 };
+export const radii = { sm: 6, md: 12 };
+export const touch = { minSize: 44 };
+export const typography = { label: 13, labelSm: 11 };
+```
+
+#### 2. `IconButton`
+
+Props: `icon` (React node or Ionicons name), `label?`, `onPress`, `variant: 'ghost' | 'danger'`, `accessibilityLabel`.
+
+- Hit area ≥ `touch.minSize` (44×44) via `hitSlop` or min width/height
+- Ghost variant: transparent bg, white icon @ 70% opacity; pressed → 100%
+- Optional `label` beside icon; hide label when `label` omitted (settings/game compact)
+
+#### 3. `GameHudNav`
+
+Props: `lang`, `onBack`, `onRestart`, `skipRestartConfirm?: boolean` (for future win-state Play Again).
+
+Layout:
+
+```
+┌──────────────────────────────────────────────┐
+│  [← Back]                    [↻ Restart]     │  dark green bar (#1b4332)
+└──────────────────────────────────────────────┘
+```
+
+- Row only — **no turn/shot text** in this row (turn text stays in existing score row until Phase 2)
+- Back: `Ionicons` `chevron-back` + `t(lang, 'back')`
+- Restart: `Ionicons` `refresh` + `t(lang, 'restart')`; on press → confirm dialog
+- Confirm: title `t(lang, 'confirmRestart')`, message `t(lang, 'confirmRestartMessage')`, Cancel / Restart (destructive)
+- Container: `width: '95%'`, `borderRadius: radii.md`, `paddingHorizontal: spacing.sm`, `paddingVertical: spacing.xs`, `backgroundColor: colors.hudBg`
+
+#### 4. Integration (minimal diff)
+
+**`BilliardsView.tsx` / `FourBallView.tsx`**
+
+Replace:
+
+```tsx
+<View style={styles.hudRow}>
+  <TouchableOpacity style={styles.backBtn} ...>
+  <TouchableOpacity style={styles.restartBtn} ...>
+  {turn/shot Text}
+</View>
+```
+
+With:
+
+```tsx
+<GameHudNav lang={lang} onBack={onBack} onRestart={restart} />
+{/* turn/shot Text — keep in place below nav until Phase 2 */}
+```
+
+Remove dead styles: `backBtn`, `backText`, `restartBtn`, `restartText` from each file.
+
+**`SettingsScreen.tsx`**
+
+Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" label={t(lang,'back')} onPress={onBack} variant="ghost" />` — adapt colors to existing green header or align header to `theme.colors.hudBg`.
+
+#### 5. i18n keys to add
+
+| Key | EN | KO |
+|-----|----|----|
+| `confirmRestart` | Restart game? | 게임을 다시 시작할까요? |
+| `confirmRestartMessage` | Current scores and ball positions will be lost. | 현재 점수와 공 위치가 초기화됩니다. |
+| `cancel` | Cancel | 취소 |
+
+(`back`, `restart` already exist.)
+
+#### 6. Acceptance criteria
+
+- [x] Back and restart use shared components in both game views + settings
+- [x] Touch targets ≥ 44pt
+- [x] Restart shows confirm dialog; cancel dismisses without reset
+- [x] `t(lang, 'back')` used (no raw `←`)
+- [x] No orange `#e67e22` back or red `#e44` restart pills in game HUD
+- [x] Game logic (`restart()`, `onBack`) unchanged — only UI wiring
+- [x] `BOARD_UI_GAP` still 140 (nav row height similar to old `hudRow`; measure if taller)
+
+#### Phase 1 file checklist
+
+- [x] `src/theme.ts`
+- [x] `src/components/ui/IconButton.tsx`
+- [x] `src/components/ui/GameHudNav.tsx`
+- [x] `src/components/ui/confirmRestart.ts` (Alert wrapper)
+- [x] `src/i18n.ts` — confirm/cancel strings
+- [x] `BilliardsView.tsx` — wired
+- [x] `FourBallView.tsx` — wired
+- [x] `SettingsScreen.tsx` — shared back button
+
+---
 
 ### Phase 2 — Scoreboard
 - Extract `Scoreboard` with slots for 3-cushion vs 4-ball center content
@@ -174,13 +300,18 @@ Accents:         #2cc47a success, #f4a020 shot, #e44 miss/foul, #f4c430 win
 
 ## Implementation Checklist
 
-- [ ] `src/theme.ts` created
-- [ ] Shared `IconButton` / nav bar
-- [ ] Restart confirmation dialog
+### Phase 1
+- [x] `src/theme.ts` created
+- [x] `IconButton` + `GameHudNav` + confirm dialog
+- [x] i18n: `confirmRestart`, `confirmRestartMessage`, `cancel`
+- [x] Wired in `BilliardsView`, `FourBallView`, `SettingsScreen`
+- [x] Nav touch targets ≥ 44pt; restart confirm works
+
+### Phase 2+
 - [ ] `GameHud` extracted from duplicated views
 - [ ] Scoreboard typography + active states
 - [ ] Segmented controls for spin/english
 - [ ] Power meter container
 - [ ] Win overlay modal
-- [ ] i18n gaps filled (`back`, `confirmRestart`, FourBall player labels)
+- [ ] i18n: FourBall hardcoded player labels
 - [ ] `BOARD_UI_GAP` updated and layout verified on device
