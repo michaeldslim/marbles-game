@@ -12,6 +12,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, AppState, AppStateStatus, Platform } from 'react-native';
 import Svg, { Rect, Defs, Pattern, Image as SvgImage } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
+import RailMarkers from '../utils/RailMarkers';
 import PickerOverlay, { PICKER_R, PICKER_HALF, PICKER_SIZE } from '../utils/PickerOverlay';
 import MagnifierOverlay from '../utils/MagnifierOverlay';
 import TrajectoryLine from '../utils/TrajectoryLine';
@@ -877,6 +878,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             </Pattern>
           </Defs>
           <Rect x="0" y="0" width={size.w} height={boardH} fill="url(#woodBg)" />
+          <RailMarkers totalWidth={size.w} boardW={boardW} boardH={boardH} />
         </Svg>
         <View style={{ width: boardW, height: boardH }} {...pan.panHandlers}>
           <Svg width={boardW} height={boardH}>
