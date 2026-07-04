@@ -68,4 +68,7 @@ export const DEFAULT_BM_VOLUME = 0.2;
 export const DEFAULT_BM_ENABLED = false;
 
 // Internal version number for settings structure, used for migration when loading old settings
-export const DEFAULT_SETTINGS_VERSION = 2;
+export const DEFAULT_SETTINGS_VERSION = 3;
+
+// Default AI difficulty for vs-AI modes
+export const DEFAULT_AI_LEVEL = 'intermediate' as const;

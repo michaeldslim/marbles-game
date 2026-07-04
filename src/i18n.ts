@@ -34,6 +34,12 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     foulMinus: 'Foul −1',
     bothReds: 'Both reds!',
     miss: 'Miss',
+    aiLevel: 'AI difficulty',
+    aiLevelBeginner: 'Beginner',
+    aiLevelIntermediate: 'Intermediate',
+    aiLevelAdvanced: 'Advanced',
+    aiLevelExpert: 'Expert',
+    aiLevelDesc: 'Affects vs-AI opponents in 3-Cushion and 4-Ball.',
   },
   ko: {
   plus1: '+1',
@@ -68,6 +74,12 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     foulMinus: '파울 −1',
     bothReds: '빨간 공 둘 모두!',
     miss: '실패',
+    aiLevel: 'AI 난이도',
+    aiLevelBeginner: '초보',
+    aiLevelIntermediate: '중급',
+    aiLevelAdvanced: '고급',
+    aiLevelExpert: '전문가',
+    aiLevelDesc: '3쿠션·사구 AI 대전 난이도에 적용됩니다.',
   },
 };
 
