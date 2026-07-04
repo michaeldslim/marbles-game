@@ -4,6 +4,9 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useSettings, DEFAULT_SETTINGS, BALL_RADIUS_MIN, BALL_RADIUS_MAX } from '../context/SettingsContext';
+import { t } from '../i18n';
+import IconButton from './ui/IconButton';
+import { hud } from '../theme';
 
 interface Props {
   onBack: () => void;
@@ -75,9 +78,13 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
+        <IconButton
+          icon="chevron-back"
+          label={t(lang, 'back')}
+          onPress={onBack}
+          accessibilityLabel={t(lang, 'back')}
+          compact
+        />
         <Text style={styles.title}>{settings.language === 'ko' ? '설정' : 'Settings'}</Text>
         <TouchableOpacity style={styles.resetBtn} onPress={resetSettings}>
           <Text style={styles.resetText}>{settings.language === 'ko' ? '초기화' : 'Reset'}</Text>
@@ -387,14 +394,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f7f7' },
 
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12,
-    paddingVertical: 10, backgroundColor: '#1b4332', gap: 8,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4,
+    height: hud.navBarHeight + 8, backgroundColor: '#1b4332', gap: 8,
   },
-  backBtn: {
-    width: 34, height: 34, backgroundColor: '#2d6a4f',
-    borderRadius: 6, alignItems: 'center', justifyContent: 'center',
-  },
-  backText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   title: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
   resetBtn: {
     backgroundColor: '#e44', borderRadius: 6,
