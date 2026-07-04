@@ -32,7 +32,7 @@ alwaysApply: false
 - Gray segmented tech buttons; power meter lacks container
 - Four stacked strips instead of one cohesive panel
 
-The play area (wood texture, green felt, SVG balls) is stronger than the HUD above it.
+The play area (wood texture, green felt, SVG balls, rail alignment dots) is stronger than the HUD above it.
 
 ---
 
@@ -119,9 +119,10 @@ The play area (wood texture, green felt, SVG balls) is stronger than the HUD abo
 | 3 | 1 | `src/components/ui/GameHudNav.tsx` | Nav row: back + restart with confirm |
 | 4 | 1 | `src/components/ui/ConfirmDialog.tsx` | Restart confirmation (or `Alert` wrapper) |
 | 5 | 1 | `src/i18n.ts` | `confirmRestart`, `confirmRestartMessage`, `cancel` |
-| 6 | 2–3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
-| 7 | 3 | `src/components/ui/PowerMeter.tsx` | Charge UI |
-| 8 | 2 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
+| 6 | 1 | `src/utils/RailMarkers.tsx` | White alignment dots on left/right wooden rails |
+| 7 | 2–3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
+| 8 | 3 | `src/components/ui/PowerMeter.tsx` | Charge UI |
+| 9 | 2 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
 
 **Refactor targets:** `BilliardsView.tsx`, `FourBallView.tsx` (replace inline HUD), `SettingsScreen.tsx` (shared back), `SettingsContext.tsx` (gap constant).
 
@@ -148,7 +149,7 @@ Accents:         #2cc47a success, #f4a020 shot, #e44 miss/foul, #f4c430 win
 ### Phase 1 — Foundation (nav + theme)
 
 **Status:** Done  
-**Scope:** Shared design tokens, reusable nav buttons, restart confirm dialog. Scoreboard / tech row / win banner stay unchanged until Phase 2+.
+**Scope:** Shared design tokens, reusable nav buttons, restart confirm dialog, playboard rail markers. Scoreboard / tech row / win banner stay unchanged until Phase 2+.
 
 #### In scope
 
@@ -160,6 +161,7 @@ Accents:         #2cc47a success, #f4a020 shot, #e44 miss/foul, #f4c430 win
 | Confirm dialog | `src/components/ui/ConfirmDialog.tsx` (or RN `Alert.alert` wrapper) |
 | i18n | `confirmRestart`, `confirmRestartMessage`, `cancel` in `src/i18n.ts` |
 | Integration | Replace inline back/restart in `BilliardsView`, `FourBallView`, `SettingsScreen` back |
+| Rail markers | `src/utils/RailMarkers.tsx` — white dots on left/right wooden rails |
 
 #### Out of scope (defer)
 
@@ -251,7 +253,17 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 
 (`back`, `restart` already exist.)
 
-#### 6. Acceptance criteria
+#### 6. `RailMarkers` (playboard)
+
+`src/utils/RailMarkers.tsx` — SVG overlay on the wood-background layer in both game views.
+
+- **7 white circles** per side, vertically centered on each wooden rail (left/right of the green felt)
+- **Position:** horizontal center of each rail (`railWidth = (totalWidth - boardW) / 2`); vertical spacing from `boardH` with 5% top/bottom margin
+- **Size:** dot radius scales with rail width (`railWidth * 0.14`, max 3px)
+- **Responsive:** uses `size.w`, `boardW`, `boardH` from `computeBoardDimensions()` — scales with phone/tablet layout via `onLayout`
+- **Wired in:** `BilliardsView.tsx`, `FourBallView.tsx` (wood `Svg` layer, after `pattern-table` fill)
+
+#### 7. Acceptance criteria
 
 - [x] Back and restart use shared components in both game views + settings
 - [x] Touch targets ≥ 44pt
@@ -260,6 +272,7 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 - [x] No orange `#e67e22` back or red `#e44` restart pills in game HUD
 - [x] Game logic (`restart()`, `onBack`) unchanged — only UI wiring
 - [x] `BOARD_UI_GAP` still 140 (nav row height similar to old `hudRow`; measure if taller)
+- [x] Rail markers on both wooden rails; scale with board dimensions (phone + tablet)
 
 #### Phase 1 file checklist
 
@@ -271,6 +284,8 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 - [x] `BilliardsView.tsx` — wired
 - [x] `FourBallView.tsx` — wired
 - [x] `SettingsScreen.tsx` — shared back button
+- [x] `src/utils/RailMarkers.tsx`
+- [x] `BilliardsView.tsx` / `FourBallView.tsx` — rail markers on wood layer
 
 ---
 
@@ -306,6 +321,7 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 - [x] i18n: `confirmRestart`, `confirmRestartMessage`, `cancel`
 - [x] Wired in `BilliardsView`, `FourBallView`, `SettingsScreen`
 - [x] Nav touch targets ≥ 44pt; restart confirm works
+- [x] `RailMarkers` on playboard rails (both game views; responsive layout)
 
 ### Phase 2+
 - [ ] `GameHud` extracted from duplicated views
