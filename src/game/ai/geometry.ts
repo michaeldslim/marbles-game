@@ -121,24 +121,7 @@ export function countCushionsAlongRay(
 export function pointLineDistance(p: Pt, a: Pt, dir: Pt): number {
   const apx = p.x - a.x;
   const apy = p.y - a.y;
-  const cross = Math.abs(apx * dir.y - apy * dir.x);
-  return cross;
-}
-
-/** True when the ray from `from` toward `target` hits a cushion before reaching the target. */
-export function rayHitsWallBeforeTarget(
-  from: Pt,
-  target: Pt,
-  walls: Wall[],
-  tableW: number,
-  tableH: number,
-  margin: number,
-  stopBeforeRadius = 0,
-): boolean {
-  const { x, y, mag } = normalize(target.x - from.x, target.y - from.y);
-  if (mag < 1) return false;
-  const maxDist = Math.max(1, mag - stopBeforeRadius);
-  return countCushionsAlongRay(from, { x, y }, maxDist * 0.98, walls, tableW, tableH, margin, 2) > 0;
+  return Math.abs(apx * dir.y - apy * dir.x);
 }
 
 /** Whether opponent cue lies near the cue→target line (foul risk for 4-ball). */

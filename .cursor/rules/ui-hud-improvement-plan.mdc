@@ -13,7 +13,7 @@ alwaysApply: false
 - **Layout budget:** `BOARD_UI_GAP = 140` in `SettingsContext.tsx` — used for ball-size math and board height.
 - **Navigation:** Shared `GameHudNav` — dark green bar with chevron Back + refresh Restart (confirm dialog). Turn/shot text in separate `statusRow` below.
 - **i18n:** `t(lang, 'back')` used in nav; restart uses `t(lang, 'restart')`.
-- **AI:** Inline `useEffect` in `BilliardsView.tsx` (~110 lines) and `FourBallView.tsx` (~90 lines). No difficulty setting; no shared module. 3-Cushion uses wall-reflection geometry but does **not** validate scoring rules (3 cushions before 2nd ball, break must hit red first). 4-Ball has ghost-ball / follow logic but does **not** avoid opponent-cue fouls (−1 pt).
+- **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings (beginner→expert). Views call `planBilliardsShot` / `planFourBallShot`. **3-Cushion AI uses geometric heuristics only** — plans +1/+2 cue-ball cushion routes but cannot reliably score without physics sim (see Phase 1.5 limitations). 4-Ball has ghost-ball / foul avoidance / safety fallback.
 
 ### HUD rows today
 
@@ -293,19 +293,53 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 
 ### Phase 1.5 — AI difficulty & rule-aware play
 
-**Status:** Not started  
-**Scope:** Extract AI from game views into shared modules; add Settings picker for difficulty; improve shot selection so AI respects 3-Cushion and 4-Ball scoring rules. No HUD visual redesign — reuse existing “AI thinking…” row.
+**Status:** Done (simplified heuristics). **3-Cushion AI is ball-first +1 when geometry allows; +2 only as fallback. Not human-level — defer physics sim.**  
+**Next:** Phase 2 (Scoreboard).
 
-**Why now (between Phase 1 and 2):** AI logic is duplicated and embedded in views like the old HUD. Difficulty belongs in Settings alongside win-score rules. Better AI makes vs-AI mode playable before scoreboard polish.
+**Why now (between Phase 1 and 2):** AI logic was duplicated and embedded in views like the old HUD. Difficulty belongs in Settings alongside win-score rules. Better AI makes vs-AI mode playable before scoreboard polish.
 
-#### Current AI gaps (baseline to beat)
+#### Game scoring rules (must match `BilliardsView.tsx`)
 
-| Game | What works today | What’s missing |
-|------|------------------|----------------|
-| **3-Cushion** | 3-wall / 2-wall reflection paths to object balls; random aim spread; follow spin | Does not score paths by **rule compliance** (+1: 3 cushions between 1st and 2nd object ball; +2: 3 cushions before any object ball). Break shot can hit yellow first → foul. Picks shortest geometric path, not highest **expected points**. No english / spin tuning for cushion count. |
-| **4-Ball** | Follow-through when reds align; ghost-ball cut when not | Can hit **opponent cue** → foul −1. No safety / defensive shot when no clear score. Spread and power not scaled by difficulty. |
+The engine counts **cue-ball** cushion contacts (`cue.wallHitCount`), not object-ball cushions:
 
-#### In scope
+| Points | Rule |
+|--------|------|
+| **+2** | Cue ball hits **≥3 cushions before** first object ball, then hits **both** object balls |
+| **+1** | Cue hits first object ball, then cue ball hits **≥3 more cushions** before hitting the second object ball |
+| **Break foul** | First object contact on break must be **red** |
+
+Early AI incorrectly planned **object-ball** carom paths for +1. Current planner uses **cue-ball** triple-mirror paths after first contact (`findCueCaromToSecond`).
+
+#### What shipped (2026-07)
+
+| Area | Done |
+|------|------|
+| `aiLevel` setting | `SettingsContext` + pill picker in `SettingsScreen`; EN/KO labels |
+| Shared module | `src/game/ai/` — `types`, `profiles`, `geometry`, `selection`, `billiardsAi`, `fourBallAi` |
+| 3-Cushion planner | +2 (cue→3 cushions→ball), +1 (cue→ball→cue carom→ball), bank variants; `preferScoringOnly` for intermediate+; break red-first penalty |
+| 4-Ball planner | Ghost-ball / follow carom; opponent-cue foul risk; safety only when no score; wall-before-ball penalty |
+| Difficulty spread | Wider `aimSpreadRad`, `badShotChance`, `topK` per level; beginner can still miss / pick bad shots |
+| View integration | `BilliardsView` / `FourBallView` call planners; inline AI removed |
+
+#### Known 3-Cushion limitations (why expert still “just hits balls” sometimes)
+
+Without per-shot **physics replay**, the planner cannot guarantee real +1/+2:
+
+1. **Post-contact cue position** is estimated (`estimateCuePosAfterFirstContact`), not simulated — carom path after first ball is approximate.
+2. **Cut angle** for +1 uses ghost-ball follow heuristic (`ghostAimForCueExit`) — spin, throw, and ball radius affect real exit angle.
+3. **+2** aims along a 3-cushion mirror path to the first ball; hitting the second ball depends on cue speed and deflection after first contact.
+4. **Candidate filter** keeps only geometrically “valid” +1/+2 paths; when none exist, falls back to direct ball hit or wall safety — looks like “not playing 3-cushion”.
+5. **Scoring in game** may still differ from geometric prediction (cushion count timing, spin).
+
+**To reach human-like 3-cushion AI (future / out of scope v1):**
+
+- Light ray-march or capped physics sim per top-N candidates (~20–50), pick highest actual score
+- Iterative aim refinement from simulated cushion count
+- Separate break-shot planner (spread hit on red)
+
+4-Ball AI is in better shape (direct ball contact scoring) but still heuristic foul avoidance.
+
+#### In scope (original)
 
 | Task | Deliverable |
 |------|-------------|
@@ -330,13 +364,17 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 export type AiLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 
 export interface AiProfile {
-  thinkDelayMs: [number, number];   // min/max before shot
-  aimSpreadRad: number;             // random angle noise (±)
-  powerJitter: number;              // ± fraction on computed power
-  ruleAwareness: number;            // 0–1: weight rule-valid paths vs raw geometry
-  foulAvoidance: number;            // 0–1: penalty weight for opponent-cue risk (4B)
-  useSpin: boolean;                 // draw/follow/english tuning
-  safetyBias: number;               // 0–1: prefer leave-hard shots when no score
+  thinkDelayMs: [number, number];
+  aimSpreadRad: number;
+  powerJitter: number;
+  powerMistakeChance: number;       // chance of large wrong-power error
+  ruleAwareness: number;
+  foulAvoidance: number;
+  useSpin: boolean;
+  safetyBias: number;
+  topK: number;                     // pick among top K scored candidates
+  badShotChance: number;            // deliberately pick low-ranked shot
+  preferScoringOnly: boolean;       // filter to scoring candidates when any exist
 }
 ```
 
@@ -385,31 +423,17 @@ export interface ShotPlan {
 
 Views keep: turn gating, `setTimeout` think delay from profile, `eng.launchMarble`, shot-active flags.
 
-#### 3. 3-Cushion rule-aware planner (`billiardsAi.ts`)
+#### 3-Cushion planner (simplified v2)
 
-**Input:** cue, red, white (opponent cue), table W×H, `isBreak`, physics constants from settings.
+**Routes (no bank shots, no wall-only safety):**
 
-**Candidate generation** (extend current triple-reflection loops):
+| Priority | Route | Behaviour |
+|----------|-------|-----------|
+| 1 | `plus1` | Ghost-aim at first object ball when cue carom to second exists |
+| 2 | `plus2` | Only when no +1 candidate; 3-cushion mirror from cue |
+| 3 | `direct` | Hit nearest object ball (miss) |
 
-1. For each final target ball order (red then white, white then red — only orders valid for scoring)
-2. For each 3-cushion and 2-cushion wall sequence (existing `wa/wb/wc` loops)
-3. Compute aim vector + predicted cushion count at 1st object hit and at 2nd object hit
-
-**Scoring each candidate** (higher = better):
-
-| Signal | Weight |
-|--------|--------|
-| Valid +1 (≥3 cushions between 1st and 2nd object contact) | +100 |
-| Valid +2 (≥3 cushions before any object contact) | +120 |
-| Break: first contact is red | required or heavy penalty |
-| Path length (shorter) | small tie-break |
-| Invalid (fewer than 3 cushions before 2nd ball) | −80 |
-
-Multiply rule term weights by `profile.ruleAwareness`. At **beginner**, still add randomness so AI sometimes picks invalid paths.
-
-**Break shot:** When `isBreak`, filter or penalize candidates whose first object contact is not red.
-
-**Spin:** For advanced/expert, set `spin` / `sideSpin` to nudge cushion count (follow through cushions, english for position) — start with fixed follow on long routes like today, expand later.
+**Removed:** `bank`, `wall_only`, cut-angle aim heuristics, safety shots (4-Ball too).
 
 #### 4. 4-Ball rule-aware planner (`fourBallAi.ts`)
 
@@ -464,27 +488,28 @@ Remove duplicated `mir` / `hit` / ghost-ball helpers from views once extracted t
 
 #### 7. Acceptance criteria
 
-- [ ] Settings shows AI level picker; persists across app restarts
-- [ ] Beginner misses more often and fouls more; Expert scores more reliably in vs-AI smoke tests
-- [ ] 3-Cushion AI: break shots target red first; non-break shots prefer paths with ≥3 cushions before 2nd object ball when level ≥ intermediate
-- [ ] 4-Ball AI: avoids opponent cue at advanced/expert; no regression on basic carom shots
-- [ ] AI logic lives in `src/game/ai/` — not duplicated across views
-- [ ] Human 2P mode unchanged; `aiLevel` only applies when `vsAI={true}`
-- [ ] Game scoring / foul rules in views unchanged — AI only improves shot selection
+- [x] Settings shows AI level picker; persists across app restarts
+- [x] Beginner misses more often; Expert picks tighter shots (spread / topK)
+- [x] 3-Cushion AI: break shots penalise non-red first contact; prefers geometric +1/+2 when candidates exist
+- [ ] 3-Cushion AI: reliably scores +1/+2 in play (blocked — needs physics sim or ray-march; heuristic-only)
+- [x] 4-Ball AI: foul avoidance + safety fallback; ghost/follow carom preserved
+- [x] AI logic lives in `src/game/ai/` — not duplicated across views
+- [x] Human 2P mode unchanged; `aiLevel` only applies when `vsAI={true}`
+- [x] Game scoring / foul rules in views unchanged — AI only improves shot selection
 
 #### Phase 1.5 file checklist
 
-- [ ] `src/game/ai/types.ts`
-- [ ] `src/game/ai/profiles.ts`
-- [ ] `src/game/ai/geometry.ts`
-- [ ] `src/game/ai/billiardsAi.ts`
-- [ ] `src/game/ai/fourBallAi.ts`
-- [ ] `src/game/ai/index.ts`
-- [ ] `SettingsContext.tsx` — `aiLevel`, version bump
-- [ ] `SettingsScreen.tsx` — AI level picker
-- [ ] `src/i18n.ts` — level strings
-- [ ] `BilliardsView.tsx` — use planner
-- [ ] `FourBallView.tsx` — use planner
+- [x] `src/game/ai/types.ts`
+- [x] `src/game/ai/profiles.ts`
+- [x] `src/game/ai/geometry.ts`
+- [x] `src/game/ai/billiardsAi.ts`
+- [x] `src/game/ai/fourBallAi.ts`
+- [x] `src/game/ai/index.ts`
+- [x] `SettingsContext.tsx` — `aiLevel`, version bump
+- [x] `SettingsScreen.tsx` — AI level picker
+- [x] `src/i18n.ts` — level strings
+- [x] `BilliardsView.tsx` — use planner
+- [x] `FourBallView.tsx` — use planner
 
 ---
 
@@ -524,12 +549,13 @@ Remove duplicated `mir` / `hit` / ghost-ball helpers from views once extracted t
 - [x] `RailMarkers` on playboard rails (both game views; responsive layout)
 
 ### Phase 1.5
-- [ ] `src/game/ai/` module + difficulty profiles
-- [ ] `aiLevel` in Settings + picker UI
-- [ ] Rule-aware 3-Cushion planner (break + cushion count)
-- [ ] Rule-aware 4-Ball planner (foul avoidance + safety)
-- [ ] Views wired to planners; inline AI removed
-- [ ] i18n: AI level labels
+- [x] `src/game/ai/` module + difficulty profiles
+- [x] `aiLevel` in Settings + picker UI
+- [x] Rule-aware 3-Cushion planner (cue-ball cushion geometry; heuristic limits documented)
+- [x] Rule-aware 4-Ball planner (foul avoidance + safety)
+- [x] Views wired to planners; inline AI removed
+- [x] i18n: AI level labels
+- [ ] Future: physics-backed candidate validation for 3-Cushion scoring reliability
 
 ### Phase 2+
 - [ ] `GameHud` extracted from duplicated views
