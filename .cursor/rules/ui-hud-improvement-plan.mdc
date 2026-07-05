@@ -10,10 +10,10 @@ alwaysApply: false
 
 - **Stack:** Expo / React Native, no UI library; `StyleSheet` + hardcoded hex colors.
 - **HUD location:** Duplicated inline in `BilliardsView.tsx` and `FourBallView.tsx` (~95% identical).
-- **Layout budget:** `BOARD_UI_GAP = 140` in `SettingsContext.tsx` — used for ball-size math and board height.
+- **Layout budget:** `BOARD_UI_GAP = 118` in `theme.ts` (initial HUD estimate); runtime `hudHeight` measured via `onLayout` on `hudChrome` — used for ball-size math and board height.
 - **Navigation:** Shared `GameHudNav` — dark green bar with chevron Back + refresh Restart (confirm dialog). Turn/shot text in separate `statusRow` below.
 - **i18n:** `t(lang, 'back')` used in nav; restart uses `t(lang, 'restart')`.
-- **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings (beginner→expert). Views call `planBilliardsShot` / `planFourBallShot`. **3-Cushion AI uses geometric heuristics only** — plans +1/+2 cue-ball cushion routes but cannot reliably score without physics sim (see Phase 1.5 limitations). 4-Ball has ghost-ball / foul avoidance / safety fallback.
+- **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings. Simplified heuristics (ball-first +1, +2 fallback). Not human-level 3-cushion play — see Phase 1.5.
 
 ### HUD rows today
 
@@ -316,8 +316,8 @@ Early AI incorrectly planned **object-ball** carom paths for +1. Current planner
 |------|------|
 | `aiLevel` setting | `SettingsContext` + pill picker in `SettingsScreen`; EN/KO labels |
 | Shared module | `src/game/ai/` — `types`, `profiles`, `geometry`, `selection`, `billiardsAi`, `fourBallAi` |
-| 3-Cushion planner | +2 (cue→3 cushions→ball), +1 (cue→ball→cue carom→ball), bank variants; `preferScoringOnly` for intermediate+; break red-first penalty |
-| 4-Ball planner | Ghost-ball / follow carom; opponent-cue foul risk; safety only when no score; wall-before-ball penalty |
+| 3-Cushion planner | +1 ball-first, +2 fallback; no bank/wall safety |
+| 4-Ball planner | Ghost-ball / follow carom; foul avoidance (no safety shots) |
 | Difficulty spread | Wider `aimSpreadRad`, `badShotChance`, `topK` per level; beginner can still miss / pick bad shots |
 | View integration | `BilliardsView` / `FourBallView` call planners; inline AI removed |
 
@@ -435,85 +435,234 @@ Views keep: turn gating, `setTimeout` think delay from profile, `eng.launchMarbl
 
 **Removed:** `bank`, `wall_only`, cut-angle aim heuristics, safety shots (4-Ball too).
 
-#### 4. 4-Ball rule-aware planner (`fourBallAi.ts`)
+#### 4. 4-Ball planner (`fourBallAi.ts` — simplified)
 
-**Input:** cue, red1, red2, opponent cue, table bounds.
+Ghost-ball / follow / direct second red. Foul avoidance via `opponentLineRisk`. No safety shots.
 
-**Candidate shots:**
-
-1. **Carom / follow** — cue → red1 → red2 (existing alignment check)
-2. **Ghost-ball cut** — cue → redA → deflect toward redB (existing)
-3. **Direct second red** — if both reds nearly aligned from cue
-4. **Safety** (intermediate+): leave cue far from reds and away from opponent cue when no score line exists
-
-**Foul avoidance:** For each candidate, ray/segment check whether opponent cue lies within `2×radius` of cue path after first contact. Penalize by `profile.foulAvoidance × 150`. Expert almost never picks high-foul paths.
-
-**Scoring:**
-
-| Signal | Weight |
-|--------|--------|
-| Both reds hittable in one shot | +100 |
-| Single red only | +20 |
-| Opponent cue hit risk | −(foulAvoidance × 150) |
-| Safety leave (hard for opponent) | +(safetyBias × 40) |
-
-#### 5. View integration (minimal diff)
-
-**`BilliardsView.tsx`** — replace AI `useEffect` body with:
-
-```ts
-import { planBilliardsShot, getAiProfile } from '../game/ai';
-
-const profile = getAiProfile(settings.aiLevel);
-const [minMs, maxMs] = profile.thinkDelayMs;
-// ... after delay:
-const plan = planBilliardsShot({ cue, red, white, W, H, isBreak: isBreakRef.current, ... }, profile);
-// apply plan.spin, plan.sideSpin, launch with plan power
-```
-
-**`FourBallView.tsx`** — same pattern with `planFourBallShot`.
-
-Remove duplicated `mir` / `hit` / ghost-ball helpers from views once extracted to `geometry.ts`.
-
-#### 6. i18n keys
-
-| Key | EN | KO |
-|-----|----|----|
-| `aiLevel` | AI difficulty | AI 난이도 |
-| `aiLevelBeginner` | Beginner | 초보 |
-| `aiLevelIntermediate` | Intermediate | 중급 |
-| `aiLevelAdvanced` | Advanced | 고급 |
-| `aiLevelExpert` | Expert | 전문가 |
-| `aiLevelDesc` | Affects vs-AI opponents in 3-Cushion and 4-Ball. | 3쿠션·사구 AI 대전 난이도에 적용됩니다. |
-
-#### 7. Acceptance criteria
+#### Phase 1.5 acceptance criteria
 
 - [x] Settings shows AI level picker; persists across app restarts
 - [x] Beginner misses more often; Expert picks tighter shots (spread / topK)
 - [x] 3-Cushion AI: break shots penalise non-red first contact; prefers geometric +1/+2 when candidates exist
-- [ ] 3-Cushion AI: reliably scores +1/+2 in play (blocked — needs physics sim or ray-march; heuristic-only)
-- [x] 4-Ball AI: foul avoidance + safety fallback; ghost/follow carom preserved
+- [ ] 3-Cushion AI: reliably scores +1/+2 in play (blocked — needs physics sim; deferred)
+- [x] 4-Ball AI: ghost/follow carom + foul avoidance
 - [x] AI logic lives in `src/game/ai/` — not duplicated across views
 - [x] Human 2P mode unchanged; `aiLevel` only applies when `vsAI={true}`
-- [x] Game scoring / foul rules in views unchanged — AI only improves shot selection
 
 #### Phase 1.5 file checklist
 
-- [x] `src/game/ai/types.ts`
-- [x] `src/game/ai/profiles.ts`
-- [x] `src/game/ai/geometry.ts`
-- [x] `src/game/ai/billiardsAi.ts`
-- [x] `src/game/ai/fourBallAi.ts`
-- [x] `src/game/ai/index.ts`
-- [x] `SettingsContext.tsx` — `aiLevel`, version bump
-- [x] `SettingsScreen.tsx` — AI level picker
-- [x] `src/i18n.ts` — level strings
-- [x] `BilliardsView.tsx` — use planner
-- [x] `FourBallView.tsx` — use planner
+- [x] `src/game/ai/*` + Settings `aiLevel` + view wiring + i18n
 
 ---
 
-### Phase 2 — Scoreboard
+### Phase 2 — Scoreboard & HUD panel
+
+**Status:** Not started  
+**Scope:** Scoreboard extraction + visual polish + turn/status relocation. **Does not** include tech row (Phase 3), win modal (Phase 4), or game logic changes.
+
+**Goal:** Replace the white score chips floating above the table with one cohesive dark-green HUD panel (nav + scoreboard). Turn/status moves from nav center into the scoreboard. Both game views share components.
+
+#### Current duplication (baseline)
+
+| Piece | `BilliardsView` | `FourBallView` | Notes |
+|-------|-----------------|----------------|-------|
+| Nav | `GameHudNav` + `center` turn text | same | Turn text to move out of nav |
+| Score row | `scoreChip` / `statsChip` (white bg, 8–13px) | `scoreCard` / `midCol` (white bg) | ~90% same layout |
+| Win banner | inline gold `winBanner` | inline (bug: win text mixes `playAgain`) | stays inline until Phase 4 |
+| Tech row | inline `techRow` 58px | same | **Phase 3 — do not touch** |
+
+Styles to delete after extraction: `scoreRow`, `scoreChip`, `scoreCard`, `activeChip`, `activeCard`, `chipLabel`, `chipScore`, `scoreNum`, `playerLabel`, `statsChip`, `statItem`, `statVal`, `midCol`, `redsLabel`, `redsNum` (per view).
+
+#### Architecture
+
+```
+src/components/
+  ui/
+    GameHudPanel.tsx       — dark wrapper (#1b4332, radii.md, width 95%)
+    Scoreboard.tsx         — 3-column row: left slot | center | right slot
+    ScoreSlot.tsx          — label + score + active accent bar
+    ScoreboardCenter.tsx   — accepts children (game-specific stats)
+  gameHud/
+    BilliardsScoreboard.tsx  — thin wrapper: props → Scoreboard + 3C center
+    FourBallScoreboard.tsx   — thin wrapper: props → Scoreboard + 4B center
+```
+
+**Why two game wrappers instead of one giant prop union:** keeps `Scoreboard` dumb/presentational; game views pass only what they have. Optional later: single `GameHud` shell in Phase 3 when tech row joins.
+
+#### Visual spec (Phase 2 additions to `theme.ts`)
+
+```ts
+export const colors = {
+  // existing …
+  scoreCard: '#2d6a4f',       // felt card on hud bg
+  scoreCardActive: '#357a5c',   // subtle fill when active
+  shot: '#f4a020',
+  win: '#f4c430',
+  marbleYellow: '#f4c430',
+  marbleWhite: '#f0f0f0',
+  marbleAi: '#a8c5b8',
+};
+
+export const typography = {
+  // existing …
+  score: 20,          // player score number
+  scoreLabel: 12,     // player name / AI
+  stat: 11,           // center stats
+  statValue: 12,
+  turn: 12,           // turn / shot status line
+};
+```
+
+**ScoreSlot active state:** 4px left bar `colors.accent` + optional `scoreCardActive` fill — not white chip + green border.
+
+**Marble indicators:** Small circle (8px) beside label — yellow / white / AI muted — reduce emoji in labels (emoji can stay in win banner until Phase 4).
+
+#### Component contracts
+
+**`ScoreSlot`**
+
+```ts
+interface ScoreSlotProps {
+  label: string;
+  score: number;
+  active: boolean;
+  marbleColor?: string;  // dot color
+}
+```
+
+**`ScoreboardCenter`**
+
+```ts
+interface ScoreboardCenterProps {
+  children: React.ReactNode;
+  statusLine?: string;      // e.g. "+1" / "Miss" / turn text
+  statusTone?: 'neutral' | 'success' | 'danger' | 'shot';
+}
+```
+
+**`BilliardsScoreboard`**
+
+```ts
+interface BilliardsScoreboardProps {
+  lang: Lang;
+  score1: number;
+  score2: number;
+  turn: 1 | 2;
+  vsAI: boolean;
+  cushionCount: number;
+  ballsHit: number;
+  lastResult: string | null;
+  ready: boolean;           // billiardReady — drives turn vs "Shot" in center
+}
+```
+
+Center content: `{cushions} 2/3 · {balls} 1/2` on one line; `lastResult` below or inline; when `!ready` show shot status (`t(lang,'shot')`) instead of turn suffix.
+
+**`FourBallScoreboard`**
+
+```ts
+interface FourBallScoreboardProps {
+  lang: Lang;
+  score1: number;
+  score2: number;
+  turn: 'yellow' | 'white';
+  vsAI: boolean;
+  ballsHit: number;
+  lastResult: string | null;
+  ready: boolean;
+  winner: 'yellow' | 'white' | null;
+}
+```
+
+Center: `{redsLabel} 1/2` + result. Fix i18n: P2 label always `t(lang,'player2')` or `t(lang,'ai')` — remove hardcoded `'⚪ Player 2'` / `'🤖 AI'`.
+
+#### Layout integration (per view)
+
+**Before (today):**
+
+```
+hudChrome
+  GameHudNav [center = turn text]
+  scoreRow (white chips)
+  winBanner? (conditional)
+  techRow (unchanged Phase 2)
+```
+
+**After Phase 2:**
+
+```
+hudChrome
+  GameHudPanel
+    GameHudNav          // center prop removed — back/restart only
+    BilliardsScoreboard // or FourBallScoreboard
+  winBanner?            // unchanged — Phase 4 moves to modal
+  techRow               // unchanged — Phase 3
+```
+
+`GameHudNav`: remove `center` prop usage from views (prop can stay optional for backward compat or deprecate in same PR).
+
+#### Implementation steps (order)
+
+| Step | Task | Files |
+|------|------|-------|
+| 1 | Extend `theme.ts` tokens (colors + typography above) | `src/theme.ts` |
+| 2 | `ScoreSlot`, `ScoreboardCenter`, `Scoreboard` | `src/components/ui/` |
+| 3 | `GameHudPanel` wrapper | `src/components/ui/GameHudPanel.tsx` |
+| 4 | `BilliardsScoreboard` + wire `BilliardsView` | remove ~40 lines styles/JSX |
+| 5 | `FourBallScoreboard` + wire `FourBallView` | fix P2 i18n + win text bug |
+| 6 | Delete dead score styles from both views | both views |
+| 7 | Device check: iPhone SE width, Korean strings, active turn visibility | manual |
+
+#### `BOARD_UI_GAP` / layout
+
+- `hudHeight` is already measured dynamically — scoreboard typography increase (8px→12px labels, 13px→20px scores) may add ~8–12px to chrome.
+- After step 7, update `BOARD_UI_GAP` initial constant in `theme.ts` if measured height shifted; re-check ball sizing via `computeBoardDimensions`.
+- Do **not** change `techRow` height (58px) in Phase 2.
+
+#### i18n (Phase 2)
+
+| Key | EN | KO | Notes |
+|-----|----|----|-------|
+| (existing) | `player1`, `player2`, `ai`, `cushions`, `balls`, `redsLabel`, `turnSuffix`, `shot` | — | reuse |
+| `statDivider` | · | · | center line separator (optional) |
+
+No new keys strictly required unless we add uppercase section labels later (Phase 3).
+
+#### Acceptance criteria
+
+- [ ] Nav row has back + restart only; no turn text in nav bar
+- [ ] Scoreboard uses dark panel (`hudBg` / `scoreCard`); no white `#fff` score chips
+- [ ] Active player clearly indicated (accent bar + optional fill)
+- [ ] Typography ≥ 12px labels, ≥ 20px scores
+- [ ] 3-Cushion center: cushions + balls + last result
+- [ ] 4-Ball center: reds hit + last result; P2 label uses i18n
+- [ ] `BilliardsView` / `FourBallView` share `Scoreboard` primitives — no copy-pasted score row JSX
+- [ ] Win banner + tech row behaviour unchanged
+- [ ] `BOARD_UI_GAP` / ball layout verified after HUD height change
+
+#### Out of scope (explicit)
+
+- `SegmentedControl` / spin-english redesign → Phase 3
+- `PowerMeter` card → Phase 3
+- Win overlay modal → Phase 4
+- Intro / Settings visual restyle → Phase 4
+- Extract full `GameHud` including tech row → Phase 3
+
+#### Phase 2 file checklist
+
+- [ ] `src/theme.ts` — scoreboard tokens
+- [ ] `src/components/ui/ScoreSlot.tsx`
+- [ ] `src/components/ui/ScoreboardCenter.tsx`
+- [ ] `src/components/ui/Scoreboard.tsx`
+- [ ] `src/components/ui/GameHudPanel.tsx`
+- [ ] `src/components/gameHud/BilliardsScoreboard.tsx`
+- [ ] `src/components/gameHud/FourBallScoreboard.tsx`
+- [ ] `BilliardsView.tsx` — wired, dead styles removed
+- [ ] `FourBallView.tsx` — wired, i18n fix, dead styles removed
+
+---
+
+### Phase 2 (summary — one line)
 - Extract `Scoreboard` with slots for 3-cushion vs 4-ball center content
 - Typography + active-player treatment; relocate turn/status
 
@@ -530,7 +679,7 @@ Remove duplicated `mir` / `hit` / ghost-ball helpers from views once extracted t
 
 ## Constraints
 
-1. Retest ball sizing if `BOARD_UI_GAP` changes from 140
+1. Retest ball sizing if `BOARD_UI_GAP` changes (currently `118` initial; runtime `hudHeight` from layout)
 2. Test Korean strings (“재시작”, “뒤로”, AI level labels) on small screens
 3. HUD phases: keep scoring/foul **rules** in views — UI-only. Phase 1.5 AI is isolated shot planning; do not change settle/score logic
 4. Any HUD edit today requires two files until `GameHud` is extracted — prioritize extraction first
@@ -558,8 +707,8 @@ Remove duplicated `mir` / `hit` / ghost-ball helpers from views once extracted t
 - [ ] Future: physics-backed candidate validation for 3-Cushion scoring reliability
 
 ### Phase 2+
-- [ ] `GameHud` extracted from duplicated views
-- [ ] Scoreboard typography + active states
+- [ ] Scoreboard extraction + dark HUD panel (see Phase 2 checklist)
+- [ ] `GameHud` shell with tech row (Phase 3)
 - [ ] Segmented controls for spin/english
 - [ ] Power meter container
 - [ ] Win overlay modal
