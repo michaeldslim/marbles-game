@@ -163,28 +163,39 @@ function makeCandidate(
 function scoreCandidate(c: Candidate, isBreak: boolean, ruleAwareness: number, tableH: number): number {
   let score = 0;
 
+  if (c.routeKind === 'wall_only') return -1000;
+
   // +1 slightly preferred — shorter, more realistic billiards shot
   if (c.points === 1) score += 112;
   else if (c.points === 2) score += 100;
-  else score -= 90 * ruleAwareness;
+  else score -= 120 * ruleAwareness;
 
   if (isBreak && c.firstBall !== 'red') {
     score -= 250 * ruleAwareness;
   }
 
   if (!c.hitsSecond) {
-    score -= 70 * ruleAwareness;
+    score -= 80 * ruleAwareness;
   }
 
-  // Prefer +1 carom / bank over long +2 wall routes
+  // Strongly prefer cue → object ball first; bank/+2 only when they actually score
+  if (c.cushionsBeforeFirst === 0) {
+    score += c.points >= 1 ? 40 : 8;
+  } else if (c.points === 0) {
+    score -= 100 * ruleAwareness;
+  } else if (c.points === 1) {
+    if (c.routeKind === 'bank') score -= 25 * ruleAwareness;
+    if (c.routeKind === 'plus2_reflect') score -= 15 * ruleAwareness;
+  }
+
   if (c.points === 1) {
-    if (c.routeKind === 'plus1_carom') score += 18;
-    if (c.routeKind === 'bank') score += 12;
-    if (c.routeKind === 'direct') score += 8;
+    if (c.routeKind === 'direct') score += 22;
+    if (c.routeKind === 'plus1_carom') score += 16;
+    if (c.routeKind === 'bank') score += 4;
   }
 
   if (c.points === 2 && c.routeKind === 'plus2_reflect') {
-    score -= 8;
+    score -= 20 * ruleAwareness;
   }
 
   score -= c.pathLen * 0.025;
@@ -311,25 +322,17 @@ function collectBankCandidates(
       const pathLen = dist(cue, ca) + dist(ca, firstPos);
       const exitDir = normalize(firstPos.x - ca.x, firstPos.y - ca.y);
 
-      if (carom) {
-        const afterFirst = carom.cushionsAfter;
-        const hitsSecond = estimateSecondBallHit(firstPos, carom.exitDir, secondPos, ballRadius);
-        const points = classifyPoints(1, afterFirst, hitsSecond);
-        if (points === 1) {
-          out.push(makeCandidate(
-            aimDx, aimDy, pathLen + carom.pathLen,
-            ball, firstPos, secondPos, ballRadius,
-            1, afterFirst, carom.exitDir, 'bank',
-          ));
-          continue;
-        }
-      }
+      if (!carom) continue;
 
-      // Bank to first ball only (setup / partial)
+      const afterFirst = carom.cushionsAfter;
+      const hitsSecond = estimateSecondBallHit(firstPos, carom.exitDir, secondPos, ballRadius);
+      const points = classifyPoints(1, afterFirst, hitsSecond);
+      if (points !== 1) continue;
+
       out.push(makeCandidate(
-        aimDx, aimDy, pathLen,
+        aimDx, aimDy, pathLen + carom.pathLen,
         ball, firstPos, secondPos, ballRadius,
-        1, 0, exitDir, 'bank',
+        1, afterFirst, carom.exitDir, 'bank',
       ));
     }
   }
@@ -463,23 +466,34 @@ export function planBilliardsShot(input: BilliardsAiInput, profile: AiProfile): 
   const margin = cue.radius * 2;
   const ballRadius = cue.radius;
 
-  let candidates = [
+  const ballCandidates = [
+    ...collectDirectCandidates(cue.pos, red.pos, white.pos, tableW, tableH, margin, ballRadius),
     ...collectPlusOneCandidates(cue.pos, red.pos, white.pos, tableW, tableH, margin, ballRadius),
     ...collectBankCandidates(cue.pos, red.pos, white.pos, tableW, tableH, margin, ballRadius),
-    ...collectDirectCandidates(cue.pos, red.pos, white.pos, tableW, tableH, margin, ballRadius),
     ...collectPlusTwoCandidates(cue.pos, red.pos, white.pos, tableW, tableH, margin, ballRadius),
-    ...collectWallOnlyCandidates(cue.pos, tableW, tableH, margin),
   ];
 
-  if (candidates.length === 0) {
-    candidates = [fallbackShot(cue.pos, tableW, tableH, margin)];
-  }
+  let candidates = ballCandidates.length > 0
+    ? ballCandidates
+    : [
+      ...collectWallOnlyCandidates(cue.pos, tableW, tableH, margin),
+      fallbackShot(cue.pos, tableW, tableH, margin),
+    ];
 
   const best = pickRankedCandidate(
     candidates,
     (c) => scoreCandidate(c, isBreak, profile.ruleAwareness, tableH),
     profile,
-    { scoringFilter: (c) => c.points >= 1 },
+    {
+      scoringFilter: (c) => {
+        if (c.points < 1) return false;
+        const hasBallFirst = candidates.some(
+          (cc) => cc.points >= 1 && cc.cushionsBeforeFirst === 0,
+        );
+        if (hasBallFirst) return c.cushionsBeforeFirst === 0;
+        return true;
+      },
+    },
   );
 
   const spread = applyAimSpread(best.aimDx, best.aimDy, profile.aimSpreadRad);

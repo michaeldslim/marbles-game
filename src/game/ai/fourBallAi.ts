@@ -3,8 +3,10 @@ import {
   applyAimSpread,
   dist,
   jitterPower,
+  makeWalls,
   normalize,
   opponentLineRisk,
+  rayHitsWallBeforeTarget,
 } from './geometry';
 import { applyPowerMistake, pickRankedCandidate } from './selection';
 
@@ -19,6 +21,7 @@ interface Candidate {
   scoresBoth: boolean;
   foulRisk: number;
   safetyScore: number;
+  wallBeforeBall: boolean;
 }
 
 function ghostBallScore(
@@ -73,21 +76,28 @@ function buildCaromCandidates(
 
   const out: Candidate[] = [];
   const m = cueRadius * 2;
+  const walls = makeWalls(tableW, tableH, m);
+  const contactDist = primaryRadius + cueRadius;
+
+  const wallBeforePrimary = (dx: number, dy: number) =>
+    rayHitsWallBeforeTarget(cue, { x: cue.x + dx, y: cue.y + dy }, walls, tableW, tableH, m, contactDist);
 
   if (alignment > 0.5) {
     const target = primaryPos;
+    const dx = target.x - cue.x;
+    const dy = target.y - cue.y;
     out.push({
-      dx: target.x - cue.x,
-      dy: target.y - cue.y,
+      dx,
+      dy,
       spin: 0.65,
       pathLen: primaryDist,
       kind: 'follow',
       scoresBoth: true,
       foulRisk: foulRiskToTarget(cue, target, opponentPos, cueRadius, oppRadius),
       safetyScore: 0,
+      wallBeforeBall: wallBeforePrimary(dx, dy),
     });
   } else {
-    const contactDist = primaryRadius + cueRadius;
     const nA = { x: -primToSecN.y, y: primToSecN.x };
     const nB = { x: primToSecN.y, y: -primToSecN.x };
     const ghostA = { x: primaryPos.x + nA.x * contactDist, y: primaryPos.y + nA.y * contactDist };
@@ -101,9 +111,11 @@ function buildCaromCandidates(
       const ghostScore = ghostBallScore(ghost, cue, primaryPos, primToSecN, contactDist);
       if (ghostScore < -0.1) continue;
 
+      const dx = ghost.x - cue.x;
+      const dy = ghost.y - cue.y;
       out.push({
-        dx: ghost.x - cue.x,
-        dy: ghost.y - cue.y,
+        dx,
+        dy,
         spin: 0,
         pathLen: dist(cue, ghost),
         kind: 'ghost',
@@ -113,32 +125,47 @@ function buildCaromCandidates(
           foulRiskToTarget(primaryPos, secondaryPos, opponentPos, cueRadius, oppRadius) * 0.5,
         ),
         safetyScore: 0,
+        wallBeforeBall: wallBeforePrimary(dx, dy),
       });
     }
 
     if (out.length === 0) {
+      const dx = primaryPos.x - cue.x;
+      const dy = primaryPos.y - cue.y;
       out.push({
-        dx: primaryPos.x - cue.x,
-        dy: primaryPos.y - cue.y,
+        dx,
+        dy,
         spin: 0,
         pathLen: primaryDist,
         kind: 'ghost',
         scoresBoth: false,
         foulRisk: foulRiskToTarget(cue, primaryPos, opponentPos, cueRadius, oppRadius),
         safetyScore: 0,
+        wallBeforeBall: wallBeforePrimary(dx, dy),
       });
     }
   }
 
+  const directDx = secondaryPos.x - cue.x;
+  const directDy = secondaryPos.y - cue.y;
   out.push({
-    dx: secondaryPos.x - cue.x,
-    dy: secondaryPos.y - cue.y,
+    dx: directDx,
+    dy: directDy,
     spin: 0.4,
     pathLen: dist(cue, secondaryPos),
     kind: 'direct',
     scoresBoth: false,
     foulRisk: foulRiskToTarget(cue, secondaryPos, opponentPos, cueRadius, oppRadius),
     safetyScore: 0,
+    wallBeforeBall: rayHitsWallBeforeTarget(
+      cue,
+      secondaryPos,
+      walls,
+      tableW,
+      tableH,
+      m,
+      contactDist,
+    ),
   });
 
   return out;
@@ -164,19 +191,24 @@ function buildSafetyCandidate(
     scoresBoth: false,
     foulRisk: 0,
     safetyScore: dist(cue, opponent),
+    wallBeforeBall: true,
   };
 }
 
 function scoreCandidate(c: Candidate, profile: AiProfile): number {
   let score = 0;
   if (c.scoresBoth) score += 100;
-  else if (c.kind === 'direct') score += 15;
-  else if (c.kind === 'safety') score += profile.safetyBias * 55;
+  else if (c.kind === 'direct') score += 12;
+  else if (c.kind === 'safety') score += profile.safetyBias * 40;
 
-  score -= c.foulRisk * profile.foulAvoidance * 180;
+  score -= c.foulRisk * profile.foulAvoidance * 200;
 
-  if (c.foulRisk > 0.35 && profile.foulAvoidance > 0.7) {
-    score -= 60;
+  if (c.foulRisk > 0.35 && profile.foulAvoidance > 0.5) {
+    score -= 80 * profile.foulAvoidance;
+  }
+
+  if (c.wallBeforeBall) {
+    score -= c.kind === 'safety' ? 0 : 90 * Math.max(0.35, profile.ruleAwareness);
   }
 
   score += c.safetyScore * profile.safetyBias * 0.08;
@@ -205,11 +237,11 @@ export function planFourBallShot(input: FourBallAiInput, profile: AiProfile): Sh
     tableH,
   );
 
-  if (profile.safetyBias > 0.08) {
+  const hasScoring = candidates.some((c) => c.scoresBoth && c.foulRisk < 0.5 && !c.wallBeforeBall);
+
+  if (!hasScoring && profile.safetyBias > 0.2) {
     candidates.push(buildSafetyCandidate(cue.pos, opponentCue.pos, tableW, tableH, margin));
   }
-
-  const hasScoring = candidates.some((c) => c.scoresBoth && c.foulRisk < 0.5);
 
   const best = pickRankedCandidate(
     candidates,
@@ -217,15 +249,17 @@ export function planFourBallShot(input: FourBallAiInput, profile: AiProfile): Sh
     profile,
     {
       scoringFilter: (c) =>
-        c.scoresBoth && (profile.foulAvoidance < 0.6 || c.foulRisk < 0.4),
+        c.scoresBoth &&
+        !c.wallBeforeBall &&
+        (profile.foulAvoidance < 0.55 || c.foulRisk < 0.4),
     },
   );
 
   const useSafetyFallback =
     !hasScoring &&
-    profile.safetyBias > 0.25 &&
+    profile.safetyBias > 0.35 &&
     best.kind !== 'safety' &&
-    Math.random() < profile.safetyBias * 0.4;
+    Math.random() < profile.safetyBias * 0.25;
 
   const chosen = useSafetyFallback
     ? candidates.find((c) => c.kind === 'safety') ?? best

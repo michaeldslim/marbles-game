@@ -23,9 +23,13 @@ export function pickRankedCandidate<T>(
   const sorted = [...pool].sort((a, b) => scoreFn(b) - scoreFn(a));
 
   if (profile.badShotChance > 0 && Math.random() < profile.badShotChance) {
-    const bottomStart = Math.max(1, Math.floor(sorted.length * 0.45));
-    const idx = bottomStart + Math.floor(Math.random() * (sorted.length - bottomStart));
-    return sorted[Math.min(idx, sorted.length - 1)];
+    const scoring = options?.scoringFilter
+      ? sorted.filter((item) => options.scoringFilter!(item))
+      : [];
+    const badPool = scoring.length > 1 ? scoring : sorted;
+    const bottomStart = Math.max(1, Math.floor(badPool.length * 0.5));
+    const idx = bottomStart + Math.floor(Math.random() * (badPool.length - bottomStart));
+    return badPool[Math.min(idx, badPool.length - 1)];
   }
 
   const k = Math.max(1, Math.min(profile.topK, sorted.length));
