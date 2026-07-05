@@ -69,8 +69,8 @@ Types are scattered across ~12 locations. Several are **duplicated** or **near-d
 ### Single entry point
 
 ```
-src/types/
-  index.ts    — all shared types + type-only re-exports (no runtime values)
+src/types/index.ts 
+ — all shared types + type-only re-exports (no runtime values)
 ```
 
 **Import convention after migration:**
