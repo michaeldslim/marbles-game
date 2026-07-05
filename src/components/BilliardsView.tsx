@@ -28,6 +28,7 @@ import { t } from '../i18n';
 import GameHudNav from './ui/GameHudNav';
 import { BOARD_UI_GAP } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
+import { getAiProfile, planBilliardsShot, randomThinkDelayMs } from '../game/ai';
 
 interface Props {
   onBack: () => void;
@@ -439,10 +440,9 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   }, []);
 
   // AI play for player 2 (yellow cue) when vsAI is enabled.
-  // Always aims at a wall first. Plans a 3-wall route (cue→wa→wb→wc→target) via triple
-  // reflection. Falls back to 2-wall, then a guaranteed wall-center shot if needed.
   useEffect(() => {
     if (!vsAI || turn !== 2 || !billiardReady || shotActiveRef.current || !!winner) return;
+    const profile = getAiProfile(settings.aiLevel ?? 'intermediate');
     const timeoutId = setTimeout(() => {
       const eng = engineRef.current;
       const cueId = yellowIdRef.current;
@@ -452,105 +452,34 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
       const white = eng.marbles.find((m) => m.id === playerIdRef.current);
       if (!cue || !red || !white) return;
 
-      const W = eng.width; const H = eng.height; const r = cue.radius;
-      const mg = r * 2; // cushion margin
+      const plan = planBilliardsShot(
+        {
+          cue: { pos: cue.pos, radius: cue.radius },
+          red: { pos: red.pos, radius: red.radius },
+          white: { pos: white.pos, radius: white.radius },
+          tableW: eng.width,
+          tableH: eng.height,
+          isBreak: isBreakRef.current,
+        },
+        profile,
+      );
 
-      const walls = [
-        { axis: 'y' as const, val: mg },       // 0: top
-        { axis: 'y' as const, val: H - mg },   // 1: bottom
-        { axis: 'x' as const, val: mg },       // 2: left
-        { axis: 'x' as const, val: W - mg },   // 3: right
-      ];
+      const mag = Math.hypot(plan.dx, plan.dy) || 1;
+      const speed = s.launchSpeed3C * powerRef.current * plan.power;
 
-      type Pt = { x: number; y: number };
-      const mir = (p: Pt, w: number): Pt => {
-        const wb = walls[w];
-        return wb.axis === 'y' ? { x: p.x, y: 2 * wb.val - p.y } : { x: 2 * wb.val - p.x, y: p.y };
-      };
-      const hit = (from: Pt, to: Pt, w: number): Pt | null => {
-        const wb = walls[w];
-        const dx = to.x - from.x; const dy = to.y - from.y;
-        let t: number;
-        if (wb.axis === 'y') { if (Math.abs(dy) < 0.5) return null; t = (wb.val - from.y) / dy; }
-        else { if (Math.abs(dx) < 0.5) return null; t = (wb.val - from.x) / dx; }
-        if (t <= 0.005 || t >= 0.995) return null;
-        const px = from.x + t * dx; const py = from.y + t * dy;
-        if (wb.axis === 'y' && (px < mg || px > W - mg)) return null;
-        if (wb.axis === 'x' && (py < mg || py > H - mg)) return null;
-        return { x: px, y: py };
-      };
-      const d = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y);
-
-      let aimDx = 0; let aimDy = 0; let bestLen = Infinity;
-
-      // 3-wall: cue → wa → wb → wc → T  (triple reflection)
-      // Also tries both object balls as the final target
-      for (const T of [red.pos, white.pos] as Pt[]) {
-        for (let wa = 0; wa < 4; wa++) {
-          for (let wb = 0; wb < 4; wb++) {
-            if (wb === wa) continue;
-            for (let wc = 0; wc < 4; wc++) {
-              if (wc === wb) continue;
-              const m1 = mir(T, wc);
-              const m2 = mir(m1, wb);
-              const m3 = mir(m2, wa);
-              const ca = hit(cue.pos, m3, wa); if (!ca) continue;
-              const cb = hit(ca, m2, wb);      if (!cb) continue;
-              const cc = hit(cb, m1, wc);      if (!cc) continue;
-              const len = d(cue.pos, ca) + d(ca, cb) + d(cb, cc) + d(cc, T);
-              if (len < bestLen) { bestLen = len; aimDx = ca.x - cue.pos.x; aimDy = ca.y - cue.pos.y; }
-            }
-          }
-        }
-      }
-
-      // Fallback: 2-wall
-      if (bestLen === Infinity) {
-        for (const T of [red.pos, white.pos] as Pt[]) {
-          for (let wa = 0; wa < 4; wa++) {
-            for (let wb = 0; wb < 4; wb++) {
-              if (wb === wa) continue;
-              const m1 = mir(T, wb);
-              const m2 = mir(m1, wa);
-              const ca = hit(cue.pos, m2, wa); if (!ca) continue;
-              const cb = hit(ca, m1, wb);      if (!cb) continue;
-              const len = d(cue.pos, ca) + d(ca, cb) + d(cb, T);
-              if (len < bestLen) { bestLen = len; aimDx = ca.x - cue.pos.x; aimDy = ca.y - cue.pos.y; }
-            }
-          }
-        }
-      }
-
-      // Last resort: always aim at center of nearest wall (guaranteed cushion contact)
-      if (bestLen === Infinity) {
-        const nearY = cue.pos.y < H * 0.5 ? mg : H - mg;
-        aimDx = W * 0.5 - cue.pos.x; aimDy = nearY - cue.pos.y;
-        bestLen = d(cue.pos, { x: W * 0.5, y: nearY }) * 3;
-      }
-
-      const spread = (Math.random() - 0.5) * 0.15;
-      const cosS = Math.cos(spread); const sinS = Math.sin(spread);
-      const rdx = aimDx * cosS - aimDy * sinS; const rdy = aimDx * sinS + aimDy * cosS;
-      const mag = Math.hypot(rdx, rdy) || 1;
-
-      const distFactor = Math.min(bestLen / (H * 1.5), 1);
-      const power = 0.8 + distFactor * 0.15;
-      const speed = s.launchSpeed3C * powerRef.current * power;
-
-      cue.spin = 0.25;  // follow spin helps carry through cushions
-      cue.sideSpin = 0;
-      eng.launchMarble(cueId, { x: (rdx / mag) * speed, y: (rdy / mag) * speed });
+      cue.spin = plan.spin;
+      cue.sideSpin = plan.sideSpin;
+      eng.launchMarble(cueId, { x: (plan.dx / mag) * speed, y: (plan.dy / mag) * speed });
       shotActiveRef.current = true;
       setBilliardReady(false);
       billiardReadyRef.current = false;
-      // Reset picker to default (스톱샷 + 무회전)
       pickerContactRef.current = { x: 0, y: 0 };
       setPickerContact({ x: 0, y: 0 });
       shotTypeRef.current = 'stop'; setShotType('stop');
       englishRef.current = 'none'; setEnglish('none');
-    }, 600 + Math.random() * 700);
+    }, randomThinkDelayMs(profile));
     return () => clearTimeout(timeoutId);
-  }, [turn, billiardReady, vsAI, winner]);
+  }, [turn, billiardReady, vsAI, winner, settings.aiLevel]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;

@@ -20,7 +20,9 @@ import {
   DEFAULT_BM_VOLUME,
   DEFAULT_BM_ENABLED,
   DEFAULT_SETTINGS_VERSION,
+  DEFAULT_AI_LEVEL,
 } from '../game/constants';
+import type { AiLevel } from '../game/ai';
 
 export interface Settings {
   // Ball sizes / 공 크기
@@ -59,6 +61,8 @@ export interface Settings {
   bmEnabled?: boolean;
   // Internal version for settings migration
   settingsVersion?: number;
+  // AI difficulty for vs-AI modes (3-Cushion + 4-Ball)
+  aiLevel: AiLevel;
 }
 
 const { width: screenW, height: screenH } = Dimensions.get('window');
@@ -93,6 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bmVolume: DEFAULT_BM_VOLUME,
   bmEnabled: DEFAULT_BM_ENABLED,
   settingsVersion: DEFAULT_SETTINGS_VERSION,
+  aiLevel: DEFAULT_AI_LEVEL,
 };
 
 interface SettingsContextValue {
@@ -109,7 +114,7 @@ const SettingsContext = createContext<SettingsContextValue>({
 
 const STORAGE_KEY = '@marbles_settings';
 // Bump this when stored setting values change meaning (forces migration).
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
@@ -125,6 +130,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if ((saved.settingsVersion ?? 1) < SETTINGS_VERSION) {
           delete saved.friction3C;
           delete saved.friction4B;
+          if (saved.aiLevel === undefined) {
+            saved.aiLevel = DEFAULT_AI_LEVEL;
+          }
           saved.settingsVersion = SETTINGS_VERSION;
         }
         setSettings((prev) => ({ ...prev, ...saved }));
