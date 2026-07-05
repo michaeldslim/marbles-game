@@ -1,0 +1,271 @@
+---
+description: Plan to consolidate scattered TypeScript types into one global types module — follow when adding types or refactoring imports
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Global Types Consolidation Plan
+
+## Goal
+
+Move **shared domain and UI types** into a single module (`src/types/index.ts`) so unions, game state shapes, and cross-file duplicates live in one place. Easier to find, rename, and keep consistent as the codebase grows.
+
+**Status:** Not started — plan only, no code changes yet.
+
+---
+
+## Current State (inventory)
+
+Types are scattered across ~12 locations. Several are **duplicated** or **near-duplicates**.
+
+### Exported types (public API today)
+
+| Symbol | Location | Used by |
+|--------|----------|---------|
+| `Vec` | `game/physics.ts` | physics, overlays, engine |
+| `Marble` | `game/physics.ts` | views, overlays, physics |
+| `BoardDimensions` | `game/boardLayout.ts` | views, layout |
+| `Settings` | `context/SettingsContext.tsx` | settings screen, views, constants wiring |
+| `Lang` | `i18n.ts` | all UI |
+| `GameMode` | `components/IntroScreen.tsx` | `App.tsx`, intro |
+| `AiLevel`, `AiProfile`, `ShotPlan`, `Pt`, `MarblePos`, `BilliardsAiInput`, `FourBallAiInput` | `game/ai/types.ts` | AI module, settings, views |
+| `Wall` | `game/ai/geometry.ts` | AI geometry only |
+
+### Duplicated / inline types (should centralize)
+
+| Symbol | Locations | Issue |
+|--------|-----------|-------|
+| `SpinType` | `BilliardsView.tsx`, `FourBallView.tsx` | identical `'draw' \| 'stop' \| 'follow'` inside each component |
+| `EnglishType` | `BilliardsView.tsx`, `FourBallView.tsx` | identical `'left' \| 'none' \| 'right'` |
+| `AimState` | `TrajectoryLine.tsx`, `MagnifierOverlay.tsx` | identical `{ startX, startY, x, y }` |
+| `ChargeDir` | `TrajectoryLine.tsx`, `MagnifierOverlay.tsx` | identical `{ dx, dy, mag }` |
+| `Pt` vs `Vec` | `game/ai/types.ts` vs `game/physics.ts` | same shape `{ x: number; y: number }`, different names |
+| `language` field | `Settings.language?: 'ko' \| 'en'` | should use `Lang` instead of inline union |
+
+### Module-private types (keep local unless shared)
+
+| Symbol | Location | Notes |
+|--------|----------|-------|
+| `Candidate`, `RouteKind`, `FirstBall` | `game/ai/billiardsAi.ts` | planner internals — **do not** move to global |
+| `Candidate`, `ShotKind` | `game/ai/fourBallAi.ts` | planner internals |
+| `Props` | each component | colocate unless identical across files |
+| `SettingsContextValue` | `SettingsContext.tsx` | context-only; optional export from global |
+| `IconName` | `IconButton.tsx` | derived from Ionicons — keep local |
+
+### Missing typed unions (inline today)
+
+| Concept | Current usage | Proposed name |
+|---------|---------------|---------------|
+| 3-Cushion turn | `1 \| 2` in `BilliardsView` | `BilliardsTurn` |
+| 4-Ball turn | `'yellow' \| 'white'` in `FourBallView` | `FourBallTurn` |
+| 4-Ball winner | `'yellow' \| 'white' \| null` | `FourBallWinner` |
+| 3-Cushion winner | `1 \| 2 \| null` | `BilliardsWinner` |
+| i18n keys | `t(lang, key: string)` | `TranslationKey` (optional Phase 2) |
+
+---
+
+## Target Architecture
+
+### Single entry point
+
+```
+src/types/
+  index.ts    — all shared types + type-only re-exports (no runtime values)
+```
+
+**Import convention after migration:**
+
+```ts
+import type { Settings, Lang, SpinType, Marble } from '../types';
+// or path alias (optional): import type { Settings } from '@/types';
+```
+
+### What lives in `src/types/index.ts`
+
+Organized by section comments (one file, logical groups):
+
+```ts
+// ── Primitives ──────────────────────────────────
+export type Point = { x: number; y: number };   // replaces Vec + Pt
+
+// ── i18n ────────────────────────────────────────
+export type Lang = 'en' | 'ko';
+export type TranslationKey = keyof typeof STRINGS.en; // after i18n refactor
+
+// ── App / navigation ─────────────────────────────
+export type GameMode = 'billiards' | 'billiards-ai' | '4ball' | '4ball-ai';
+
+// ── Settings ────────────────────────────────────
+export interface Settings { … }
+
+// ── Game / physics ──────────────────────────────
+export interface Marble { … }
+export interface BoardDimensions { … }
+
+// ── Shot technique (shared by both game views) ───
+export type SpinType = 'draw' | 'stop' | 'follow';
+export type EnglishType = 'left' | 'none' | 'right';
+
+// ── Turn / winner ───────────────────────────────
+export type BilliardsTurn = 1 | 2;
+export type FourBallTurn = 'yellow' | 'white';
+…
+
+// ── Overlays / aiming ───────────────────────────
+export interface AimState { … }
+export interface ChargeDir { … }
+
+// ── AI (public planner API) ─────────────────────
+export type AiLevel = …
+export interface AiProfile { … }
+…
+
+// ── AI geometry (if used outside ai/) ───────────
+export interface Wall { … }   // only if still imported outside ai/
+```
+
+### What stays outside `src/types/`
+
+| Item | Stays in | Reason |
+|------|----------|--------|
+| `PhysicsEngine` class | `game/physics.ts` | runtime + methods |
+| `AI_PROFILES`, constants | `game/constants.ts`, `game/ai/profiles.ts` | runtime values |
+| Component `Props` | component files | unless identical (e.g. future shared `GameViewProps`) |
+| AI `Candidate` types | `billiardsAi.ts`, `fourBallAi.ts` | implementation detail |
+
+### Deprecation / alias strategy
+
+During migration, avoid a big-bang break:
+
+1. Add `src/types/index.ts` with canonical names.
+2. **`Point` replaces `Vec` and `Pt`** — temporary aliases in old files:
+   ```ts
+   /** @deprecated use Point from src/types */
+   export type Vec = Point;
+   ```
+3. Update imports file-by-file; remove aliases when grep shows zero usages.
+4. Delete `game/ai/types.ts` after re-exporting from `src/types` for one PR or removing entirely.
+
+---
+
+## Phased Implementation
+
+### Phase 1 — Create global module (no call-site changes)
+
+| Task | Deliverable |
+|------|-------------|
+| Create `src/types/index.ts` | All Tier-1 types copied from current sources |
+| Unify `Point` | Single primitive; document mapping from `Vec`/`Pt` |
+| Document sections | Comment blocks per domain in one file |
+
+**Tier 1 (must move first):** `Point`, `SpinType`, `EnglishType`, `AimState`, `ChargeDir`, `Lang`, `GameMode`, `Settings`, `Marble`, `BoardDimensions`, AI public types.
+
+### Phase 2 — Rewire imports (game + context)
+
+| File | Change |
+|------|--------|
+| `game/physics.ts` | `Vec` → `Point`; export `Marble` type from `src/types` only (physics imports type) |
+| `game/boardLayout.ts` | import `BoardDimensions` from `src/types` |
+| `context/SettingsContext.tsx` | import `Settings`, `Lang`, `AiLevel` from `src/types`; export `Settings` from types only |
+| `game/ai/*.ts` | import `Point`, AI types from `src/types`; delete `game/ai/types.ts` |
+| `game/ai/index.ts` | re-export AI types from `src/types` (backward compat) or point consumers to `src/types` |
+| `i18n.ts` | import `Lang` from `src/types`; export `Lang` re-export from types |
+
+### Phase 3 — Rewire imports (views + utils)
+
+| File | Change |
+|------|--------|
+| `BilliardsView.tsx` | Remove inline `SpinType`/`EnglishType`; use `BilliardsTurn` |
+| `FourBallView.tsx` | same + `FourBallTurn` |
+| `TrajectoryLine.tsx`, `MagnifierOverlay.tsx` | shared `AimState`, `ChargeDir` |
+| `IntroScreen.tsx` | `GameMode` from `src/types` |
+| `App.tsx` | import `GameMode` from `src/types` |
+| `SettingsScreen.tsx` | `AiLevel` from `src/types` |
+
+### Phase 4 — Cleanup
+
+| Task | Done when |
+|------|-----------|
+| Delete `game/ai/types.ts` | all imports use `src/types` |
+| Remove `Vec` / `Pt` aliases | grep empty |
+| `Settings.language` typed as `Lang` | no inline `'ko' \| 'en'` |
+| Optional: `TranslationKey` | `t(lang, key: TranslationKey)` — stricter i18n |
+| Optional: `tsconfig` path `@/types` | cleaner imports |
+
+### Phase 5 — Guardrails (ongoing)
+
+- New cross-module union/interface → add to `src/types/index.ts` first.
+- Module-private planner/UI props → stay in module.
+- No runtime exports in `src/types` (types only; `import type` enforced where possible).
+- Consider ESLint `no-restricted-imports` blocking new exports of domain types from old paths.
+
+---
+
+## Naming Decisions (resolve before coding)
+
+| Question | Recommendation |
+|----------|----------------|
+| `Vec` vs `Pt` vs `Point` | **`Point`** — neutral, used by physics + AI + overlays |
+| One file vs `src/types/*.ts` | **One file** for now (~40–80 lines of types); split only if file exceeds ~200 lines |
+| Export `Settings` from context or types? | **`src/types` only**; context imports it |
+| `Wall` in global? | **Only if** geometry stays AI-private — keep in `geometry.ts` if no external imports |
+| Component `Props` in global? | **No** unless shared by 2+ components (future `GameViewBaseProps`) |
+
+---
+
+## Acceptance Criteria
+
+- [ ] `src/types/index.ts` exists and documents all shared types in grouped sections
+- [ ] Zero duplicate `SpinType`, `EnglishType`, `AimState`, `ChargeDir` definitions
+- [ ] Single `Point` type replaces `Vec` and `Pt`
+- [ ] `Settings`, `Lang`, `GameMode`, AI public types imported from `src/types` everywhere
+- [ ] `game/ai/types.ts` removed (or thin re-export deprecated one release)
+- [ ] `import type` used for type-only imports (no runtime circular deps)
+- [ ] `npx tsc --noEmit` passes
+- [ ] No game logic or behaviour changes — types-only refactor
+
+---
+
+## Out of Scope
+
+- Zod/io-ts runtime validation schemas
+- Splitting `constants.ts` into types
+- Generating types from OpenAPI / protobuf
+- Moving `PhysicsEngine` class into types module
+- Strict `TranslationKey` unless Phase 4 optional task is approved
+
+---
+
+## Suggested PR Strategy
+
+Keep reviewable diffs:
+
+1. **PR A:** Add `src/types/index.ts` + aliases in old locations (no consumer changes)
+2. **PR B:** Migrate `game/` + `context/` imports
+3. **PR C:** Migrate `components/` + `utils/` imports
+4. **PR D:** Delete dead type files + aliases + optional `TranslationKey`
+
+Alternatively one PR if the team prefers — codebase is small (~27 TS files).
+
+---
+
+## Relationship to Other Plans
+
+- **HUD Phase 2** (`ui-hud-improvement-plan.mdc`): new scoreboard component props (`ScoreSlotProps`, etc.) should be defined in `src/types` if shared across `BilliardsScoreboard` / `FourBallScoreboard`; keep single-file props local until second consumer exists.
+- **AI module:** planner `Candidate` types remain private; only `AiLevel`, `AiProfile`, `ShotPlan`, inputs stay global.
+
+---
+
+## File Checklist
+
+- [ ] `src/types/index.ts`
+- [ ] `game/physics.ts` — use `Point`
+- [ ] `game/boardLayout.ts`
+- [ ] `game/ai/types.ts` — deleted
+- [ ] `game/ai/index.ts` — updated exports
+- [ ] `game/ai/billiardsAi.ts`, `fourBallAi.ts`, `geometry.ts`, `profiles.ts`, `selection.ts`
+- [ ] `context/SettingsContext.tsx`
+- [ ] `i18n.ts`
+- [ ] `components/BilliardsView.tsx`, `FourBallView.tsx`, `IntroScreen.tsx`, `SettingsScreen.tsx`
+- [ ] `utils/TrajectoryLine.tsx`, `MagnifierOverlay.tsx`
+- [ ] `App.tsx`
