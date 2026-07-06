@@ -26,6 +26,8 @@ import {
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
 import GameHudNav from './ui/GameHudNav';
+import GameHudPanel from './ui/GameHudPanel';
+import FourBallScoreboard from './gameHud/FourBallScoreboard';
 import { BOARD_UI_GAP } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
 import { getAiProfile, planFourBallShot, randomThinkDelayMs } from '../game/ai';
@@ -609,45 +611,26 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
         style={styles.hudChrome}
         onLayout={(e) => onHudLayout(e.nativeEvent.layout.height)}
       >
-      <GameHudNav
-        lang={lang}
-        onBack={onBack}
-        onRestart={restart}
-        center={
-          ready && !winner ? (
-            <Text style={[styles.turnText, turn === 'yellow' ? styles.yellowTurn : styles.whiteTurn]} numberOfLines={1}>
-              {turn === 'yellow' ? `🟡 ${t(lang, 'player1')}` : vsAI ? `🤖 ${t(lang, 'ai')}` : `⚪ ${t(lang, 'player2')}`} {t(lang,'turnSuffix')}
-            </Text>
-          ) : !winner ? (
-            <Text style={styles.shotText} numberOfLines={1}>{t(lang, 'shot')}</Text>
-          ) : null
-        }
-      />
-
-      {/* Scoreboard */}
-      <View style={styles.scoreRow}>
-        <View style={[styles.scoreCard, turn === 'yellow' && !winner ? styles.activeCard : null]}>
-          <Text style={styles.playerLabel}>🟡 {t(lang, 'player1')}</Text>
-          <Text style={styles.scoreNum}>{score1}</Text>
-        </View>
-        <View style={styles.midCol}>
-          <Text style={styles.redsLabel}>{t(lang, 'redsLabel')}</Text>
-          <Text style={styles.redsNum}>{ballsHit}/2</Text>
-          <Text style={[styles.resultText, lastResult?.startsWith('+') ? styles.hit : styles.miss]}>
-            {lastResult ? lastResult : ''}
-          </Text>
-        </View>
-        <View style={[styles.scoreCard, turn === 'white' && !winner ? styles.activeCard : null]}>
-          <Text style={styles.playerLabel}>{vsAI ? '🤖 AI' : '⚪ Player 2'}</Text>
-          <Text style={styles.scoreNum}>{score2}</Text>
-        </View>
-      </View>
+      <GameHudPanel>
+        <GameHudNav lang={lang} onBack={onBack} onRestart={restart} />
+        <FourBallScoreboard
+          lang={lang}
+          score1={score1}
+          score2={score2}
+          turn={turn}
+          vsAI={vsAI}
+          ballsHit={ballsHit}
+          lastResult={lastResult}
+          ready={ready}
+          winner={winner}
+        />
+      </GameHudPanel>
 
       {/* Win banner */}
       {winner && (
         <View style={styles.winBanner}>
           <Text style={styles.winText}>
-            {winner === 'yellow' ? `🟡 ${t(lang, 'player1')} ${t(lang, 'playAgain')}` : vsAI ? `🤖 ${t(lang, 'ai')} ${t(lang, 'playAgain')}` : `⚪ ${t(lang, 'player2')} ${t(lang, 'playAgain')}`}
+            {winner === 'yellow' ? `🟡 ${t(lang, 'player1')} 🏆` : vsAI ? `🤖 ${t(lang, 'ai')} 🏆` : `⚪ ${t(lang, 'player2')} 🏆`}
           </Text>
           <TouchableOpacity style={styles.playAgainBtn} onPress={restart}>
             <Text style={styles.playAgainText}>{t(lang, 'playAgain')}</Text>
@@ -856,28 +839,6 @@ const styles = StyleSheet.create({
   hudChrome: { width: '100%', alignItems: 'center' },
   arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
-
-  turnText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  yellowTurn: { color: '#2cc47a' },
-  whiteTurn: { color: '#2cc47a' },
-  shotText: { fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
-
-  scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
-  scoreCard: {
-    flex: 1, alignItems: 'center', paddingVertical: 1, paddingHorizontal: 4,
-    backgroundColor: '#fff', borderRadius: 5,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  activeCard: { borderColor: '#f4c430' },
-  playerLabel: { fontSize: 8, fontWeight: '600', color: '#444', marginBottom: 0 },
-  scoreNum: { fontSize: 13, fontWeight: '800', color: '#111' },
-
-  midCol: { flex: 1, alignItems: 'center' },
-  redsLabel: { fontSize: 7, color: '#444', fontWeight: '600' },
-  redsNum: { fontSize: 7, fontWeight: '800', color: '#111' },
-  resultText: { fontSize: 8, fontWeight: '700', marginTop: 0, textAlign: 'center' },
-  hit: { color: '#2cc47a' },
-  miss: { color: '#e44' },
 
   winBanner: {
     width: '95%', backgroundColor: '#f4c430', borderRadius: 10,

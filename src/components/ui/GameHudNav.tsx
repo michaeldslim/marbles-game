@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Lang, t } from '../../i18n';
-import { colors, hud, radii } from '../../theme';
+import { hud, radii } from '../../theme';
 import IconButton from './IconButton';
 import { confirmRestart } from './confirmRestart';
 
@@ -46,12 +46,12 @@ export default function GameHudNav({
 
 const styles = StyleSheet.create({
   bar: {
-    width: '95%',
+    width: '100%',
     height: hud.navBarHeight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.hudBg,
+    backgroundColor: 'transparent',
     borderRadius: radii.sm,
     paddingHorizontal: 2,
   },

@@ -13,7 +13,7 @@ alwaysApply: false
 - **Layout budget:** `BOARD_UI_GAP = 118` in `theme.ts` (initial HUD estimate); runtime `hudHeight` measured via `onLayout` on `hudChrome` — used for ball-size math and board height.
 - **Navigation:** Shared `GameHudNav` — dark green bar with chevron Back + refresh Restart (confirm dialog). Turn/shot text in separate `statusRow` below.
 - **i18n:** `t(lang, 'back')` used in nav; restart uses `t(lang, 'restart')`.
-- **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings. Simplified heuristics (ball-first +1, +2 fallback). Not human-level 3-cushion play — see Phase 1.5.
+- **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings. Wall-first 3-cushion routing — see Phase 1.5.
 
 ### HUD rows today
 
@@ -259,7 +259,7 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 
 `src/utils/RailMarkers.tsx` — SVG overlay on the wood-background layer in both game views.
 
-- **7 white circles** per side, vertically centered on each wooden rail (left/right of the green felt)
+- **9 white circles** per side, vertically centered on each wooden rail (left/right of the green felt)
 - **Position:** horizontal center of each rail (`railWidth = (totalWidth - boardW) / 2`); vertical spacing from `boardH` with 5% top/bottom margin
 - **Size:** dot radius scales with rail width (`railWidth * 0.14`, max 3px)
 - **Responsive:** uses `size.w`, `boardW`, `boardH` from `computeBoardDimensions()` — scales with phone/tablet layout via `onLayout`
@@ -462,8 +462,9 @@ Ghost-ball / follow / direct second red. Foul avoidance via `opponentLineRisk`. 
 
 ### Phase 2 — Scoreboard & HUD panel
 
-**Status:** Not started  
-**Scope:** Scoreboard extraction + visual polish + turn/status relocation. **Does not** include tech row (Phase 3), win modal (Phase 4), or game logic changes.
+**Status:** Done  
+**Scope:** Scoreboard extraction + visual polish + turn/status relocation. **Does not** include tech row (Phase 3), win modal (Phase 4), or game logic changes.  
+**Next:** Phase 3 (Controls).
 
 **Goal:** Replace the white score chips floating above the table with one cohesive dark-green HUD panel (nav + scoreboard). Turn/status moves from nav center into the scoreboard. Both game views share components.
 
@@ -635,15 +636,15 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 
 #### Acceptance criteria
 
-- [ ] Nav row has back + restart only; no turn text in nav bar
-- [ ] Scoreboard uses dark panel (`hudBg` / `scoreCard`); no white `#fff` score chips
-- [ ] Active player clearly indicated (accent bar + optional fill)
-- [ ] Typography ≥ 12px labels, ≥ 20px scores
-- [ ] 3-Cushion center: cushions + balls + last result
-- [ ] 4-Ball center: reds hit + last result; P2 label uses i18n
-- [ ] `BilliardsView` / `FourBallView` share `Scoreboard` primitives — no copy-pasted score row JSX
-- [ ] Win banner + tech row behaviour unchanged
-- [ ] `BOARD_UI_GAP` / ball layout verified after HUD height change
+- [x] Nav row has back + restart only; no turn text in nav bar
+- [x] Scoreboard uses dark panel (`hudBg` / `scoreCard`); no white `#fff` score chips
+- [x] Active player clearly indicated (accent bar + optional fill)
+- [x] Typography ≥ 12px labels, ≥ 20px scores
+- [x] 3-Cushion center: cushions + balls + last result
+- [x] 4-Ball center: reds hit + last result; P2 label uses i18n
+- [x] `BilliardsView` / `FourBallView` share `Scoreboard` primitives — no copy-pasted score row JSX
+- [x] Win banner + tech row behaviour unchanged
+- [x] `BOARD_UI_GAP` bumped to 128 (runtime `hudHeight` still measured via `onLayout`)
 
 #### Out of scope (explicit)
 
@@ -655,15 +656,15 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 
 #### Phase 2 file checklist
 
-- [ ] `src/theme.ts` — scoreboard tokens
-- [ ] `src/components/ui/ScoreSlot.tsx`
-- [ ] `src/components/ui/ScoreboardCenter.tsx`
-- [ ] `src/components/ui/Scoreboard.tsx`
-- [ ] `src/components/ui/GameHudPanel.tsx`
-- [ ] `src/components/gameHud/BilliardsScoreboard.tsx`
-- [ ] `src/components/gameHud/FourBallScoreboard.tsx`
-- [ ] `BilliardsView.tsx` — wired, dead styles removed
-- [ ] `FourBallView.tsx` — wired, i18n fix, dead styles removed
+- [x] `src/theme.ts` — scoreboard tokens
+- [x] `src/components/ui/ScoreSlot.tsx`
+- [x] `src/components/ui/ScoreboardCenter.tsx`
+- [x] `src/components/ui/Scoreboard.tsx`
+- [x] `src/components/ui/GameHudPanel.tsx`
+- [x] `src/components/gameHud/BilliardsScoreboard.tsx`
+- [x] `src/components/gameHud/FourBallScoreboard.tsx`
+- [x] `BilliardsView.tsx` — wired, dead styles removed
+- [x] `FourBallView.tsx` — wired, i18n fix, dead styles removed
 
 ---
 
@@ -712,7 +713,7 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 - [ ] Future: physics-backed candidate validation for 3-Cushion scoring reliability
 
 ### Phase 2+
-- [ ] Scoreboard extraction + dark HUD panel (see Phase 2 checklist)
+- [x] Scoreboard extraction + dark HUD panel (see Phase 2 checklist)
 - [ ] `GameHud` shell with tech row (Phase 3)
 - [ ] Segmented controls for spin/english
 - [ ] Power meter container
