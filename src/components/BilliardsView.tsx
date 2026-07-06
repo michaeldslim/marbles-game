@@ -26,6 +26,8 @@ import {
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
 import GameHudNav from './ui/GameHudNav';
+import GameHudPanel from './ui/GameHudPanel';
+import BilliardsScoreboard from './gameHud/BilliardsScoreboard';
 import { BOARD_UI_GAP } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
 import { getAiProfile, planBilliardsShot, randomThinkDelayMs } from '../game/ai';
@@ -663,39 +665,20 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
         style={styles.hudChrome}
         onLayout={(e) => onHudLayout(e.nativeEvent.layout.height)}
       >
-      <GameHudNav
-        lang={lang}
-        onBack={onBack}
-        onRestart={restart}
-        center={
-          billiardReady ? (
-            <Text style={styles.turnText} numberOfLines={1}>
-              {turn === 1 ? `⚪ ${t(lang, 'player1')}` : vsAI ? `🤖 ${t(lang, 'ai')}` : `🟡 ${t(lang, 'player2')}`} {t(lang,'turnSuffix')}
-            </Text>
-          ) : (
-            <Text style={styles.shotText} numberOfLines={1}>{t(lang, 'shot')}</Text>
-          )
-        }
-      />
-
-      {/* Scoreboard — compact single row */}
-      <View style={styles.scoreRow}>
-        <View style={[styles.scoreChip, turn === 1 ? styles.activeChip : null]}>
-          <Text style={styles.chipLabel}>{t(lang, 'player1')}</Text>
-          <Text style={styles.chipScore}>{score1}</Text>
-        </View>
-        <View style={styles.statsChip}>
-          <Text style={styles.statItem}>{t(lang, 'cushions')} <Text style={styles.statVal}>{cushionCount}/3</Text></Text>
-          <Text style={styles.statItem}>{t(lang, 'balls')} <Text style={styles.statVal}>{ballsHit}/2</Text></Text>
-          <Text style={[styles.resultText, lastResult?.startsWith('+') ? styles.hit : styles.miss]}>
-            {lastResult ? lastResult : ''}
-          </Text>
-        </View>
-        <View style={[styles.scoreChip, turn === 2 ? styles.activeChip : null]}>
-          <Text style={styles.chipLabel}>{vsAI ? `🤖 ${t(lang, 'ai')}` : t(lang, 'player2')}</Text>
-          <Text style={styles.chipScore}>{score2}</Text>
-        </View>
-      </View>
+      <GameHudPanel>
+        <GameHudNav lang={lang} onBack={onBack} onRestart={restart} />
+        <BilliardsScoreboard
+          lang={lang}
+          score1={score1}
+          score2={score2}
+          turn={turn}
+          vsAI={vsAI}
+          cushionCount={cushionCount}
+          ballsHit={ballsHit}
+          lastResult={lastResult}
+          ready={billiardReady}
+        />
+      </GameHudPanel>
 
       {winner && (
         <View style={styles.winBanner}>
@@ -910,28 +893,6 @@ const styles = StyleSheet.create({
   hudChrome: { width: '100%', alignItems: 'center' },
   arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
-
-  statusText: { flex: 1, fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  turnText: { fontSize: 11, fontWeight: '700', textAlign: 'center', color: '#2cc47a' },
-  readyText: { color: '#2cc47a' },
-  shotText: { fontSize: 11, fontWeight: '700', color: '#f4a020', textAlign: 'center' },
-
-  scoreRow: { width: '95%', flexDirection: 'row', alignItems: 'center', marginBottom: 1, gap: 3 },
-  scoreChip: {
-    flex: 1, alignItems: 'center', paddingVertical: 1, paddingHorizontal: 6,
-    backgroundColor: '#fff', borderRadius: 5,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  activeChip: { borderColor: '#2cc47a' },
-  chipLabel: { fontSize: 8, fontWeight: '600', color: '#666' },
-  chipScore: { fontSize: 13, fontWeight: '800', color: '#111' },
-
-  statsChip: { flex: 1, alignItems: 'center', flexDirection: 'column' },
-  statItem: { fontSize: 7, color: '#444', fontWeight: '600' },
-  statVal: { fontWeight: '800', color: '#111' },
-  resultText: { fontSize: 8, fontWeight: '700', textAlign: 'center' },
-  hit: { color: '#2cc47a' },
-  miss: { color: '#e44' },
 
   winBanner: {
     width: '95%', backgroundColor: '#f4c430', borderRadius: 10,
