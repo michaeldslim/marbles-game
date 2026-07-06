@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, hud, radii, spacing, typography } from '../../theme';
 
 interface Props {
   label: string;
@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.scoreCard,
     borderRadius: radii.sm,
     overflow: 'hidden',
-    minHeight: 52,
+    height: hud.scoreboardHeight,
   },
   cardActive: {
     backgroundColor: colors.scoreCardActive,

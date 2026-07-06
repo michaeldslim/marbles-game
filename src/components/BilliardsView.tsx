@@ -28,6 +28,8 @@ import { t } from '../i18n';
 import GameHudNav from './ui/GameHudNav';
 import GameHudPanel from './ui/GameHudPanel';
 import BilliardsScoreboard from './gameHud/BilliardsScoreboard';
+import ShotControls from './gameHud/ShotControls';
+import { EnglishType, SpinType, englishPickerContact, spinPickerContact } from '../game/shotTypes';
 import { BOARD_UI_GAP } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
 import { getAiProfile, planBilliardsShot, randomThinkDelayMs } from '../game/ai';
@@ -46,9 +48,7 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const lang = settings.language ?? 'en';
   const [size, setSize] = useState({ w: 360, h: 640 });
-  const [hudHeight, setHudHeight] = useState(BOARD_UI_GAP);
   const hudHeightRef = useRef(BOARD_UI_GAP);
-  useEffect(() => { hudHeightRef.current = hudHeight; }, [hudHeight]);
 
   const syncEngineLayout = (innerW: number, innerH: number) => {
     const eng = engineRef.current;
@@ -64,9 +64,9 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   };
 
   useEffect(() => {
-    const { innerW, innerH } = computeBoardDimensions(size.w, size.h, hudHeight);
+    const { innerW, innerH } = computeBoardDimensions(size.w, size.h, BOARD_UI_GAP);
     syncEngineLayout(innerW, innerH);
-  }, [size.w, size.h, hudHeight]);
+  }, [size.w, size.h]);
   const [marbles, setMarbles] = useState<Marble[]>([]);
   const [score1, setScore1] = useState<number>(0);
   const score1Ref = useRef<number>(0);
@@ -105,8 +105,6 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   // Shot technique selection
-  type SpinType    = 'draw' | 'stop' | 'follow';
-  type EnglishType = 'left' | 'none' | 'right';
   const [shotType, setShotType]   = useState<SpinType>('stop');
   const [english,  setEnglish]    = useState<EnglishType>('none');
   const shotTypeRef = useRef<SpinType>('stop');
@@ -651,20 +649,36 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
     setMarbles([...eng.marbles]);
   };
 
-  const { boardW, boardH } = computeBoardDimensions(size.w, size.h, hudHeight);
+  const { boardW, boardH } = computeBoardDimensions(size.w, size.h, BOARD_UI_GAP);
 
-  const onHudLayout = (height: number) => {
-    const h = Math.ceil(height);
-    if (h > 0 && h !== hudHeight) setHudHeight(h);
+  const handleShotTypeChange = (key: SpinType) => {
+    setShotType(key);
+    shotTypeRef.current = key;
+    const next = spinPickerContact(key, pickerContactRef.current);
+    pickerContactRef.current = next;
+    setPickerContact(next);
+  };
+
+  const handleEnglishChange = (key: EnglishType) => {
+    setEnglish(key);
+    englishRef.current = key;
+    const next = englishPickerContact(key, pickerContactRef.current);
+    pickerContactRef.current = next;
+    setPickerContact(next);
+  };
+
+  const cancelCharge = () => {
+    chargingRef.current = false;
+    setCharging(false);
+    chargeDirectionRef.current = null;
+    chargePowerRef.current = 0;
+    setChargePower(0);
   };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
 
-      <View
-        style={styles.hudChrome}
-        onLayout={(e) => onHudLayout(e.nativeEvent.layout.height)}
-      >
+      <View style={styles.hudChrome}>
       <GameHudPanel>
         <GameHudNav lang={lang} onBack={onBack} onRestart={restart} />
         <BilliardsScoreboard
@@ -678,6 +692,19 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
           lastResult={lastResult}
           ready={billiardReady}
         />
+        {!winner && (
+          <ShotControls
+            lang={lang}
+            shotType={shotType}
+            english={english}
+            onShotTypeChange={handleShotTypeChange}
+            onEnglishChange={handleEnglishChange}
+            charging={charging}
+            chargePower={chargePower}
+            onCancelCharge={cancelCharge}
+            aiThinking={vsAI && turn === 2}
+          />
+        )}
       </GameHudPanel>
 
       {winner && (
@@ -689,94 +716,6 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
             <Text style={styles.playAgainText}>{t(lang, 'playAgain')}</Text>
           </TouchableOpacity>
         </View>
-      )}
-
-      {!winner && (
-      <View style={styles.techRow}>
-        {vsAI && turn === 2 ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#aaa', fontSize: 13, fontWeight: '700' }}>🤖 {t(lang, 'aiThinking')}</Text>
-          </View>
-        ) : charging ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-            <View style={styles.powerMeterInner}>
-              <Text style={styles.powerMeterLabel}>{t(lang, 'tapToShoot')}</Text>
-              <View style={styles.powerMeterTrack}>
-                <View style={[styles.powerMeterFill, {
-                  width: `${Math.round(chargePower * 100)}%` as any,
-                  backgroundColor: chargePower > 0.7 ? '#e44' : chargePower > 0.4 ? '#f4a020' : '#2cc47a',
-                }]} />
-              </View>
-              <Text style={styles.powerMeterPct}>{Math.round(chargePower * 100)}%</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() => {
-                chargingRef.current = false;
-                setCharging(false);
-                chargeDirectionRef.current = null;
-                chargePowerRef.current = 0;
-                setChargePower(0);
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* Spin row */}
-            <View style={styles.techGroup}>
-              {([
-                { key: 'draw',   label: '끌어치기', sub: 'Draw' },
-                { key: 'stop',   label: '스톱샷',   sub: 'Stop' },
-                { key: 'follow', label: '밀어치기', sub: 'Follow' },
-              ] as { key: SpinType; label: string; sub: string }[]).map(({ key, label, sub }) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.techBtn, shotType === key && styles.techBtnActive]}
-                  onPress={() => {
-                    setShotType(key);
-                    const yMap: Record<SpinType, number> = { draw: PICKER_R, stop: 0, follow: -PICKER_R };
-                    const nx = pickerContactRef.current.x;
-                    const ny = yMap[key];
-                    const d = Math.sqrt(nx * nx + ny * ny);
-                    const s = d > PICKER_R ? PICKER_R / d : 1;
-                    pickerContactRef.current = { x: nx * s, y: ny * s };
-                    setPickerContact({ x: nx * s, y: ny * s });
-                  }}
-                >
-                  <Text style={[styles.techLabel, shotType === key && styles.techLabelActive]}>{settings.language === 'ko' ? label : sub}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {/* English row */}
-            <View style={styles.techGroup}>
-              {([
-                { key: 'left',  label: '왼회전', sub: 'Left Eng' },
-                { key: 'none',  label: '무회전', sub: 'No Eng' },
-                { key: 'right', label: '오른회전', sub: 'Right Eng' },
-              ] as { key: EnglishType; label: string; sub: string }[]).map(({ key, label, sub }) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.techBtn, english === key && styles.techBtnEnActive]}
-                  onPress={() => {
-                    setEnglish(key);
-                    const xMap: Record<EnglishType, number> = { left: -PICKER_R, none: 0, right: PICKER_R };
-                    const nx = xMap[key];
-                    const ny = pickerContactRef.current.y;
-                    const d = Math.sqrt(nx * nx + ny * ny);
-                    const s = d > PICKER_R ? PICKER_R / d : 1;
-                    pickerContactRef.current = { x: nx * s, y: ny * s };
-                    setPickerContact({ x: nx * s, y: ny * s });
-                  }}
-                >
-                  <Text style={[styles.techLabel, english === key && styles.techLabelActive]}>{settings.language === 'ko' ? label : sub}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        )}
-      </View>
       )}
 
       </View>
@@ -889,35 +828,16 @@ export default function BilliardsView({ onBack, vsAI = false }: Props): JSX.Elem
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', paddingTop: 2 },
-  hudChrome: { width: '100%', alignItems: 'center' },
+  container: { flex: 1, alignItems: 'stretch', paddingTop: 0 },
+  hudChrome: { width: '100%', alignItems: 'stretch' },
   arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
 
   winBanner: {
-    width: '95%', backgroundColor: '#f4c430', borderRadius: 10,
+    width: '95%', alignSelf: 'center', backgroundColor: '#f4c430', borderRadius: 10,
     paddingVertical: 10, alignItems: 'center', marginBottom: 4, gap: 8,
   },
   winText: { fontSize: 20, fontWeight: '800', color: '#111' },
   playAgainBtn: { backgroundColor: '#111', borderRadius: 6, paddingHorizontal: 20, paddingVertical: 8 },
   playAgainText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
-  techRow: { width: '95%', flexDirection: 'column', gap: 4, marginBottom: 4, height: 58 },
-  techGroup: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
-  techBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: 3, borderRadius: 6,
-    backgroundColor: '#e8e8e8', borderWidth: 1.5, borderColor: 'transparent',
-  },
-  techBtnActive:   { backgroundColor: '#1b5e36', borderColor: '#2cc47a' },
-  techBtnEnActive: { backgroundColor: '#1a3a6b', borderColor: '#4da6ff' },
-  techLabel:      { fontSize: 11, fontWeight: '700', color: '#444' },
-  techSub:        { fontSize: 9,  fontWeight: '500', color: '#888' },
-  techLabelActive: { color: '#fff' },
-
-  powerMeterInner: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-  cancelBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#c0392b', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  powerMeterLabel: { fontSize: 11, fontWeight: '800', color: '#fff', marginBottom: 3, letterSpacing: 1 },
-  powerMeterTrack: { width: '100%', height: 14, backgroundColor: '#333', borderRadius: 7, overflow: 'hidden' },
-  powerMeterFill: { height: '100%', borderRadius: 7 },
-  powerMeterPct: { fontSize: 10, fontWeight: '700', color: '#fff', marginTop: 2 },
 });
