@@ -63,15 +63,20 @@ export default function FourBallScoreboard({
           <Text style={styles.statLine} numberOfLines={1}>
             {t(lang, 'redsLabel')}{' '}
             <Text style={styles.statVal}>{ballsHit}/2</Text>
+            {lastResult ? (
+              <>
+                {' · '}
+                <Text
+                  style={[
+                    styles.resultInline,
+                    { color: resultTone(lastResult) === 'success' ? colors.accent : colors.danger },
+                  ]}
+                >
+                  {lastResult}
+                </Text>
+              </>
+            ) : null}
           </Text>
-          {lastResult ? (
-            <Text
-              style={[styles.result, { color: resultTone(lastResult) === 'success' ? colors.accent : colors.danger }]}
-              numberOfLines={1}
-            >
-              {lastResult}
-            </Text>
-          ) : null}
         </ScoreboardCenter>
       }
       right={
@@ -98,10 +103,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textOnDark,
   },
-  result: {
+  resultInline: {
     fontSize: typography.stat,
     fontWeight: '700',
-    marginTop: 2,
-    textAlign: 'center',
   },
 });
