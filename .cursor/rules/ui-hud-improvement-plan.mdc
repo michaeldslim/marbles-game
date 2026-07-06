@@ -9,31 +9,28 @@ alwaysApply: false
 ## Current State
 
 - **Stack:** Expo / React Native, no UI library; `StyleSheet` + hardcoded hex colors.
-- **HUD location:** Duplicated inline in `BilliardsView.tsx` and `FourBallView.tsx` (~95% identical).
-- **Layout budget:** `BOARD_UI_GAP = 118` in `theme.ts` (initial HUD estimate); runtime `hudHeight` measured via `onLayout` on `hudChrome` — used for ball-size math and board height.
-- **Navigation:** Shared `GameHudNav` — dark green bar with chevron Back + refresh Restart (confirm dialog). Turn/shot text in separate `statusRow` below.
-- **i18n:** `t(lang, 'back')` used in nav; restart uses `t(lang, 'restart')`.
+- **HUD:** Shared `GameHudPanel` (full width, top radius only) — `GameHudNav` + game scoreboard + `ShotControls` inside one dark-green panel flush with the playboard.
+- **Layout budget:** `BOARD_UI_GAP = 180` (`hud.chromeHeight` in `theme.ts`); **fixed** — board layout does not use dynamic `onLayout` (prevents size jump when charging).
+- **Navigation:** `GameHudNav` — back + restart with confirm; no turn text in nav (turn in scoreboard center).
+- **Scoreboard:** `BilliardsScoreboard` / `FourBallScoreboard` — dark felt cards, marble dots, accent bar for active player.
+- **Controls:** `ShotControls` — compact side-by-side `SegmentedControl` (spin | english), `PowerMeter` when charging, `AiThinkingIndicator` for AI turn.
+- **Win state:** Inline gold `winBanner` below HUD (**Phase 4** → overlay modal on dimmed table).
+- **i18n:** `t(lang, …)` for nav, scoreboard, controls; spin/english labels EN/KO.
 - **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings. Wall-first 3-cushion routing — see Phase 1.5.
 
-### HUD rows today
+### HUD layout today
 
 | Row | Content |
 |-----|---------|
-| 1 | Back + Restart + turn/shot text |
-| 2 | Score chips + center stats (7–8px labels) |
-| 3 | Win banner (gold, conditional) |
-| 4 | Spin/english buttons, power meter, or AI thinking (fixed 58px) |
+| A | Back + Restart (nav only) |
+| B | Scoreboard — P1 \| stats + turn \| P2/AI |
+| C | Spin + English segmented controls / power meter / AI thinking |
 
-### What feels dated
+### Still dated (Phase 4+)
 
-- Cramped typography (7–11px in scoreboard)
-- Flat orange/red nav pills inconsistent with Settings green header
-- No shared theme or reusable UI primitives
-- Emoji-heavy player labels; weak visual hierarchy
-- Gray segmented tech buttons; power meter lacks container
-- Four stacked strips instead of one cohesive panel
-
-The play area (wood texture, green felt, SVG balls, rail alignment dots) is stronger than the HUD above it.
+- Inline win banner pushes layout above table
+- Intro screen + Settings use light gray cards, not `theme` tokens
+- Win banner emoji labels (scoreboard already uses marble dots)
 
 ---
 
@@ -124,7 +121,8 @@ The play area (wood texture, green felt, SVG balls, rail alignment dots) is stro
 | 7 | **1.5** | `src/game/ai/*`, `SettingsContext`, `SettingsScreen` | Rule-aware AI + difficulty levels |
 | 8 | 2–3 | `src/components/ui/SegmentedControl.tsx` | Spin / english selectors |
 | 9 | 3 | `src/components/ui/PowerMeter.tsx` | Charge UI |
-| 10 | 2 | `src/components/GameHud.tsx` | Shared shell; game-specific score slots |
+| 10 | 3 | `src/components/gameHud/ShotControls.tsx` | Shared tech row in HUD panel |
+| 11 | **4** | `src/components/ui/WinOverlay.tsx` | Win modal on dimmed table |
 
 **Refactor targets:** `BilliardsView.tsx`, `FourBallView.tsx` (replace inline HUD + inline AI), `SettingsScreen.tsx` (shared back + AI level), `SettingsContext.tsx` (gap constant + `aiLevel`).
 
@@ -294,7 +292,7 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 ### Phase 1.5 — AI difficulty & rule-aware play
 
 **Status:** Done (restored wall-first 3-cushion routing, Jul 2026 fix). **3-Cushion AI always plans cushion routes first (3-wall → 2-wall → wall-center); direct ball hits only for beginner mistakes. Not human-level scoring — defer physics sim.**  
-**Next:** Phase 2 (Scoreboard).
+**Next:** Phase 4 (Win overlay).
 
 #### Jul 2026 fix (regression from ball-first overhaul)
 
@@ -464,7 +462,7 @@ Ghost-ball / follow / direct second red. Foul avoidance via `opponentLineRisk`. 
 
 **Status:** Done  
 **Scope:** Scoreboard extraction + visual polish + turn/status relocation. **Does not** include tech row (Phase 3), win modal (Phase 4), or game logic changes.  
-**Next:** Phase 3 (Controls).
+**Next:** ~~Phase 3~~ → Phase 4 (Win overlay).
 
 **Goal:** Replace the white score chips floating above the table with one cohesive dark-green HUD panel (nav + scoreboard). Turn/status moves from nav center into the scoreboard. Both game views share components.
 
@@ -484,7 +482,7 @@ Styles to delete after extraction: `scoreRow`, `scoreChip`, `scoreCard`, `active
 ```
 src/components/
   ui/
-    GameHudPanel.tsx       — dark wrapper (#1b4332, radii.md, width 95%)
+    GameHudPanel.tsx       — full-width wrapper (#1b4332, top radius only, flush with board)
     Scoreboard.tsx         — 3-column row: left slot | center | right slot
     ScoreSlot.tsx          — label + score + active accent bar
     ScoreboardCenter.tsx   — accepts children (game-specific stats)
@@ -644,7 +642,7 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 - [x] 4-Ball center: reds hit + last result; P2 label uses i18n
 - [x] `BilliardsView` / `FourBallView` share `Scoreboard` primitives — no copy-pasted score row JSX
 - [x] Win banner + tech row behaviour unchanged
-- [x] `BOARD_UI_GAP` bumped to 128 (runtime `hudHeight` still measured via `onLayout`)
+- [x] `BOARD_UI_GAP` fixed at 180 via `hud.chromeHeight` (see Phase 3)
 
 #### Out of scope (explicit)
 
@@ -675,8 +673,10 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 ### Phase 3 — Controls
 
 **Status:** Done  
-**Scope:** `SegmentedControl`, `PowerMeter` card, `AiThinkingIndicator`, shared `ShotControls` inside `GameHudPanel`.  
+**Scope:** `SegmentedControl`, `PowerMeter`, `AiThinkingIndicator`, shared `ShotControls` inside `GameHudPanel`.  
 **Next:** Phase 4 (Win overlay modal).
+
+#### What shipped
 
 | Component | File |
 |-----------|------|
@@ -686,9 +686,47 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 | Shared tech row | `src/components/gameHud/ShotControls.tsx` |
 | Picker sync helpers | `src/game/shotTypes.ts` |
 
-- Tech row moved inside `GameHudPanel` (nav + scoreboard + controls = one panel)
-- `BOARD_UI_GAP` → 196; `hud.techRowHeight` → 68
-- i18n: `spinSection`, `englishSection`, spin/english option labels (EN/KO)
+#### Layout & polish (post-Phase 3 fixes)
+
+| Change | Detail |
+|--------|--------|
+| HUD panel width | `100%` — flush with playboard wood rails |
+| Panel radius | Top corners only (`radii.md`); **bottom flat** — connects to table |
+| Fixed HUD height | `BOARD_UI_GAP = hud.chromeHeight` (**180**); no dynamic `onLayout` |
+| Tech row slot | Fixed `hud.techRowHeight` **56px** — board size identical in spin vs charge modes |
+| Control layout | Compact side-by-side spin \| english (`SegmentedControl compact`) |
+| Rail markers | **9** white dots per wooden rail |
+
+#### `theme.ts` HUD budget (Phase 3 final)
+
+```ts
+hud: {
+  navBarHeight: 32,
+  scoreboardHeight: 52,
+  techRowHeight: 56,
+  panelPadding: 24,   // spacing.md * 2
+  panelGap: 16,       // spacing.sm * 2
+  chromeHeight: 180,  // → BOARD_UI_GAP
+}
+```
+
+#### i18n (Phase 3)
+
+| Key | EN | KO |
+|-----|----|----|
+| `spinSection` | Spin | 스핀 |
+| `englishSection` | English | 회전 |
+| `spinDraw` / `spinStop` / `spinFollow` | Draw / Stop / Follow | 끌어치기 / 스톱샷 / 밀어치기 |
+| `engLeft` / `engNone` / `engRight` | Left / None / Right | 왼회전 / 무회전 / 오른회전 |
+
+#### Acceptance criteria
+
+- [x] Spin + english use `SegmentedControl` (dark track, sliding indicator)
+- [x] Power meter in dark card with cancel button
+- [x] AI thinking uses opacity pulse animation
+- [x] Tech row inside `GameHudPanel`; duplicated inline tech styles removed from views
+- [x] Board size stable when switching spin UI ↔ power charge
+- [x] HUD full width, flat bottom edge against playboard
 
 #### Phase 3 file checklist
 
@@ -699,9 +737,158 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 - [x] `src/game/shotTypes.ts`
 - [x] `src/i18n.ts` — control labels
 - [x] `BilliardsView.tsx` / `FourBallView.tsx` — wired, dead tech styles removed
+- [x] `GameHudPanel.tsx` — full width, top-only radius
+- [x] `theme.ts` — fixed `chromeHeight` / `BOARD_UI_GAP`
+
+---
 
 ### Phase 4 — Win flow & consistency
-- Win overlay modal; align Intro + Settings with theme tokens
+
+**Status:** Not started  
+**Scope:** Win overlay modal on dimmed table; remove inline `winBanner`. Optional: align Intro + Settings with `theme` tokens. **Does not** change scoring, restart logic, or `restart()` implementation.  
+**Next:** Phase 5 (optional polish).
+
+**Goal:** When `winner` is set, show a modal overlay on top of the playboard (table dimmed) with trophy, winner name, **Play Again**, and **Back to menu** — HUD stays visible but non-interactive; no gold banner that steals vertical space from the board.
+
+#### Current win UI (baseline — remove in Phase 4)
+
+| Piece | `BilliardsView` | `FourBallView` | Problem |
+|-------|-----------------|----------------|---------|
+| Placement | `winBanner` below `GameHudPanel` inside `hudChrome` | same | Pushes layout; disconnects from table |
+| Winner text | emoji + `player1` / `player2` / `ai` + 🏆 | same | OK for modal; remove from inline banner |
+| Play Again | `TouchableOpacity` → `restart()` | same | Keep; use `skipRestartConfirm` on win overlay |
+| Back to menu | — | — | Add via `onBack` prop |
+
+Styles to delete after extraction: `winBanner`, `winText`, `playAgainBtn`, `playAgainText` (per view).
+
+#### Architecture
+
+```
+src/components/
+  ui/
+    WinOverlay.tsx          — Modal + dim scrim + card (trophy, winner, actions)
+  gameHud/
+    GameWinOverlay.tsx      — thin wrapper: builds winner label from game-specific props
+```
+
+**Why a thin game wrapper:** Billiards uses `winner: 1 | 2`; FourBall uses `'yellow' | 'white'`. Wrapper maps to display string + marble color; `WinOverlay` stays presentational.
+
+#### Visual spec
+
+```
+Scrim:           rgba(0,0,0,0.55) over full playboard (arenaShell), not over HUD
+Card:            colors.hudBg, borderRadius radii.md, padding spacing.lg
+Trophy:          🏆 or colors.win accent
+Winner text:     typography.score (20px), colors.textOnDark
+Subtitle:        optional final score line (typography.stat, textMuted)
+Primary CTA:     Play Again — colors.accent fill
+Secondary CTA:   Back to menu — ghost / outline (reuse IconButton pattern)
+```
+
+Modal uses RN `Modal` with `transparent` + centered card, or absolute `View` overlay inside `arenaShell` so HUD nav remains reachable for Back (choose one — recommend overlay inside `arenaShell` only so table dims, HUD stays crisp).
+
+#### Component contracts
+
+**`WinOverlay`**
+
+```ts
+interface WinOverlayProps {
+  visible: boolean;
+  lang: Lang | undefined;
+  winnerLabel: string;       // e.g. "Player 1" or "AI"
+  winnerMarbleColor?: string;
+  onPlayAgain: () => void;
+  onBackToMenu: () => void;
+  skipRestartConfirm?: boolean;  // true for Play Again from win state
+}
+```
+
+**`BilliardsWinOverlay` / `FourBallWinOverlay`** (or single helper `getWinnerDisplay(...)`)
+
+```ts
+// Billiards: winner 1 | 2, vsAI
+// FourBall: winner 'yellow' | 'white', vsAI
+```
+
+#### Layout integration (per view)
+
+**Before (today):**
+
+```
+hudChrome
+  GameHudPanel (nav + scoreboard + ShotControls hidden when winner?)
+  winBanner (gold, pushes chrome taller)
+arenaShell
+  table ...
+```
+
+**After Phase 4:**
+
+```
+hudChrome
+  GameHudPanel (scoreboard shows final state; ShotControls hidden when winner)
+arenaShell
+  table ...
+  WinOverlay (absolute fill, visible when winner)
+```
+
+- Remove `{winner && <View style={winBanner}>…}` from both views
+- `WinOverlay` rendered inside `arenaShell` / `arenaWrap` as last child (high z-index)
+- `onPlayAgain` → existing `restart()`; pass `skipRestartConfirm={true}` or wire through `confirmRestart`
+- `onBackToMenu` → existing `onBack` prop
+
+#### Implementation steps (order)
+
+| Step | Task | Files |
+|------|------|-------|
+| 1 | `WinOverlay` presentational component | `src/components/ui/WinOverlay.tsx` |
+| 2 | i18n: `backToMenu`, `youWin` (optional) | `src/i18n.ts` |
+| 3 | Winner label helper or thin wrappers | `src/components/gameHud/` or inline in views |
+| 4 | Wire `BilliardsView` — overlay in arena, delete winBanner | `BilliardsView.tsx` |
+| 5 | Wire `FourBallView` — same | `FourBallView.tsx` |
+| 6 | Hide `ShotControls` when `winner` (already `!winner` guard — verify scoreboard win state) |
+| 7 | Device check: modal over table, Play Again restarts, Back returns to intro |
+
+#### Intro + Settings (optional same PR or follow-up)
+
+| Screen | Change |
+|--------|--------|
+| `IntroScreen.tsx` | Card bg → `colors.scoreCard` or white on `colors.hudBg` header strip; buttons use `colors.accent` / `colors.felt` |
+| `SettingsScreen.tsx` | Section headers + row chips align with `theme` tokens (partially done for AI pills) |
+
+Defer full Intro redesign if scope creeps — **win overlay is required**; Intro/Settings token pass is nice-to-have.
+
+#### i18n (Phase 4)
+
+| Key | EN | KO | Notes |
+|-----|----|----|-------|
+| `backToMenu` | Back to menu | 메뉴로 | secondary CTA |
+| `youWin` | You win! | 승리! | optional subtitle |
+| (existing) | `playAgain`, `player1`, `player2`, `ai` | — | reuse |
+
+#### Acceptance criteria
+
+- [ ] No inline gold `winBanner` in either game view
+- [ ] Win state shows overlay on **dimmed table**; HUD panel remains visible
+- [ ] Play Again restarts game (confirm skipped on win CTA)
+- [ ] Back to menu calls `onBack`
+- [ ] Winner label uses i18n + marble dot (minimal emoji)
+- [ ] Board / HUD height unchanged when winner appears (no layout jump)
+- [ ] (Optional) Intro / Settings use shared `theme` colors
+
+#### Out of scope
+
+- Confetti / sound on win
+- Stats or rematch options
+- Changing win-score rules or `restart()` game logic
+
+#### Phase 4 file checklist
+
+- [ ] `src/components/ui/WinOverlay.tsx`
+- [ ] `src/i18n.ts` — `backToMenu` (+ optional `youWin`)
+- [ ] `BilliardsView.tsx` — overlay wired, winBanner removed
+- [ ] `FourBallView.tsx` — overlay wired, winBanner removed
+- [ ] (Optional) `IntroScreen.tsx` / `SettingsScreen.tsx` — theme tokens
 
 ### Phase 5 — Polish (optional)
 - `expo-haptics` on press; light transitions; dark HUD mode
@@ -710,10 +897,10 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 
 ## Constraints
 
-1. Retest ball sizing if `BOARD_UI_GAP` changes (currently `196` initial; runtime `hudHeight` from layout)
-2. Test Korean strings (“재시작”, “뒤로”, AI level labels) on small screens
+1. Retest ball sizing if `BOARD_UI_GAP` changes (currently **180** fixed; no runtime `onLayout` on HUD)
+2. Test Korean strings (“재시작”, “뒤로”, spin/english labels) on small screens — compact side-by-side controls
 3. HUD phases: keep scoring/foul **rules** in views — UI-only. Phase 1.5 AI is isolated shot planning; do not change settle/score logic
-4. Any HUD edit today requires two files until `GameHud` is extracted — prioritize extraction first
+4. Win overlay must not increase `hudChrome` height — overlay lives on `arenaShell`, not in HUD flow
 5. AI planners must stay fast enough for mobile (candidate cap ~200 paths per shot; no full physics replay)
 
 ---
@@ -737,11 +924,13 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 - [x] i18n: AI level labels
 - [ ] Future: physics-backed candidate validation for 3-Cushion scoring reliability
 
-### Phase 2+
-- [x] Scoreboard extraction + dark HUD panel (see Phase 2 checklist)
-- [x] `GameHud` shell with tech row (Phase 3 — `ShotControls` in `GameHudPanel`)
-- [x] Segmented controls for spin/english
-- [x] Power meter container
-- [ ] Win overlay modal
-- [x] i18n: FourBall hardcoded player labels (Phase 2)
-- [x] `BOARD_UI_GAP` updated to 196 (runtime `hudHeight` via `onLayout`)
+### Phase 3
+- [x] `SegmentedControl` + `PowerMeter` + `AiThinkingIndicator` + `ShotControls`
+- [x] Fixed HUD height (`BOARD_UI_GAP` 180); board stable in charge mode
+- [x] Full-width `GameHudPanel`, flat bottom edge on playboard
+- [x] i18n: spin/english labels
+
+### Phase 4 (next)
+- [ ] `WinOverlay` on dimmed table; remove inline `winBanner`
+- [ ] Play Again + Back to menu CTAs
+- [ ] (Optional) Intro / Settings theme alignment
