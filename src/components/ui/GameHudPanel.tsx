@@ -12,9 +12,12 @@ export default function GameHudPanel({ children }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   panel: {
-    width: '95%',
+    width: '100%',
     backgroundColor: colors.hudBg,
-    borderRadius: radii.md,
+    borderTopLeftRadius: radii.md,
+    borderTopRightRadius: radii.md,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     padding: spacing.md,
     gap: spacing.sm,
     alignItems: 'stretch',
