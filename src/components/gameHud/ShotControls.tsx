@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: hud.techRowHeight,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   splitRow: {
     flexDirection: 'row',
