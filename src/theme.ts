@@ -37,6 +37,15 @@ export const hud = {
   navBarHeight: 32,
   navButtonHeight: 30,
   navButtonMinWidth: 68,
+  /** Fixed tech slot — matches power-meter height so board size never jumps when charging. */
+  techRowHeight: 56,
+  scoreboardHeight: 52,
+  panelPadding: spacing.md * 2,
+  panelGap: spacing.sm * 2,
+  get chromeHeight() {
+    return this.panelPadding + this.panelGap + this.navBarHeight + this.scoreboardHeight + this.techRowHeight;
+  },
 };
 
-export const BOARD_UI_GAP = 128;
+/** Initial HUD budget; board layout uses this fixed value (not dynamic onLayout). */
+export const BOARD_UI_GAP = hud.chromeHeight;
