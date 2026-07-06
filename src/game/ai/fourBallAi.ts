@@ -75,32 +75,23 @@ function buildCandidates(
     const nB = { x: primToSecN.y, y: -primToSecN.x };
     const ghostA = { x: primaryPos.x + nA.x * contactDist, y: primaryPos.y + nA.y * contactDist };
     const ghostB = { x: primaryPos.x + nB.x * contactDist, y: primaryPos.y + nB.y * contactDist };
+    const ghost = ghostBallScore(ghostA, cue, primaryPos, primToSecN, contactDist)
+      >= ghostBallScore(ghostB, cue, primaryPos, primToSecN, contactDist)
+      ? ghostA
+      : ghostB;
 
-    for (const ghost of [ghostA, ghostB]) {
-      if (ghost.x <= m || ghost.x >= tableW - m || ghost.y <= m || ghost.y >= tableH - m) continue;
-      if (ghostBallScore(ghost, cue, primaryPos, primToSecN, contactDist) < -0.1) continue;
-      out.push({
-        dx: ghost.x - cue.x,
-        dy: ghost.y - cue.y,
-        spin: 0,
-        pathLen: dist(cue, ghost),
-        kind: 'ghost',
-        scoresBoth: true,
-        foulRisk: Math.max(foul(ghost), foul(primaryPos) * 0.5),
-      });
-    }
+    const inBounds =
+      ghost.x > m && ghost.x < tableW - m && ghost.y > m && ghost.y < tableH - m;
 
-    if (out.length === 0) {
-      out.push({
-        dx: primaryPos.x - cue.x,
-        dy: primaryPos.y - cue.y,
-        spin: 0,
-        pathLen: primaryDist,
-        kind: 'ghost',
-        scoresBoth: false,
-        foulRisk: foul(primaryPos),
-      });
-    }
+    out.push({
+      dx: inBounds ? ghost.x - cue.x : primaryPos.x - cue.x,
+      dy: inBounds ? ghost.y - cue.y : primaryPos.y - cue.y,
+      spin: 0,
+      pathLen: inBounds ? dist(cue, ghost) : primaryDist,
+      kind: 'ghost',
+      scoresBoth: inBounds,
+      foulRisk: Math.max(foul(ghost), foul(primaryPos) * 0.5),
+    });
   }
 
   out.push({
@@ -117,10 +108,17 @@ function buildCandidates(
 }
 
 function scoreCandidate(c: Candidate, profile: AiProfile): number {
-  let score = c.scoresBoth ? 100 : c.kind === 'direct' ? 15 : 0;
-  score -= c.foulRisk * profile.foulAvoidance * 180;
+  let score = c.scoresBoth ? 100 : c.kind === 'direct' ? 12 : 0;
+  score -= c.foulRisk * profile.foulAvoidance * 200;
   score -= c.pathLen * 0.01;
   return score;
+}
+
+function spreadForShot(kind: ShotKind, profile: AiProfile): number {
+  // Original inline AI used ~0.32 follow / ~0.22 cut at intermediate.
+  const base = kind === 'follow' ? 0.32 : kind === 'ghost' ? 0.22 : 0.18;
+  const scale = profile.aimSpreadRad / 0.14;
+  return base * scale;
 }
 
 export function planFourBallShot(input: FourBallAiInput, profile: AiProfile): ShotPlan {
@@ -129,6 +127,7 @@ export function planFourBallShot(input: FourBallAiInput, profile: AiProfile): Sh
   const d1 = dist(cue.pos, red1.pos);
   const d2 = dist(cue.pos, red2.pos);
   const [primary, secondary] = d1 <= d2 ? [red1, red2] : [red2, red1];
+  const primaryDist = Math.min(d1, d2);
 
   const candidates = buildCandidates(
     cue.pos,
@@ -148,15 +147,14 @@ export function planFourBallShot(input: FourBallAiInput, profile: AiProfile): Sh
     profile,
     {
       scoringFilter: (c) =>
-        c.scoresBoth && (profile.foulAvoidance < 0.55 || c.foulRisk < 0.4),
+        c.scoresBoth && (profile.foulAvoidance < 0.5 || c.foulRisk < 0.35),
     },
   );
 
-  const spreadMul = best.kind === 'follow' ? 1.15 : best.kind === 'ghost' ? 1 : 0.9;
-  const spread = applyAimSpread(best.dx, best.dy, profile.aimSpreadRad * spreadMul);
+  const spread = applyAimSpread(best.dx, best.dy, spreadForShot(best.kind, profile));
   const { x: nx, y: ny, mag } = normalize(spread.dx, spread.dy);
 
-  const distFactor = Math.min(Math.min(d1, d2) / (tableH * 0.6), 1);
+  const distFactor = Math.min(primaryDist / (tableH * 0.6), 1);
   let power = 0.6 + distFactor * 0.3;
   power = jitterPower(power, profile.powerJitter);
   power = applyPowerMistake(power, profile);

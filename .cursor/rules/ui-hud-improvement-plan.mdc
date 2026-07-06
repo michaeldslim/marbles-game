@@ -293,8 +293,21 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 
 ### Phase 1.5 — AI difficulty & rule-aware play
 
-**Status:** Done (simplified heuristics). **3-Cushion AI is ball-first +1 when geometry allows; +2 only as fallback. Not human-level — defer physics sim.**  
+**Status:** Done (restored wall-first 3-cushion routing, Jul 2026 fix). **3-Cushion AI always plans cushion routes first (3-wall → 2-wall → wall-center); direct ball hits only for beginner mistakes. Not human-level scoring — defer physics sim.**  
 **Next:** Phase 2 (Scoreboard).
+
+#### Jul 2026 fix (regression from ball-first overhaul)
+
+The Jul 5 ball-first +1/+2 planner felt worse than the original inline AI: shots looked like “hit the nearest ball,” difficulty levels were indistinguishable (`safetyBias` unused, tiny candidate pools), and cushion play disappeared.
+
+**Restored behaviour:**
+
+| Game | Planner |
+|------|---------|
+| 3-Cushion | Wall-first triple-mirror routes (original inline logic), tiered by `ruleAwareness`; beginner adds direct misses via `badShotChance` |
+| 4-Ball | Original follow/ghost selection; difficulty scales spread from inline baselines (0.32 follow / 0.22 cut) |
+
+**Difficulty now affects:** route tier floor (`ruleAwareness`), aim spread, power mistakes, `badShotChance`, `topK`, foul avoidance (4-ball), think delay.
 
 **Why now (between Phase 1 and 2):** AI logic was duplicated and embedded in views like the old HUD. Difficulty belongs in Settings alongside win-score rules. Better AI makes vs-AI mode playable before scoreboard polish.
 
@@ -308,28 +321,20 @@ The engine counts **cue-ball** cushion contacts (`cue.wallHitCount`), not object
 | **+1** | Cue hits first object ball, then cue ball hits **≥3 more cushions** before hitting the second object ball |
 | **Break foul** | First object contact on break must be **red** |
 
-Early AI incorrectly planned **object-ball** carom paths for +1. Current planner uses **cue-ball** triple-mirror paths after first contact (`findCueCaromToSecond`).
-
 #### What shipped (2026-07)
 
 | Area | Done |
 |------|------|
 | `aiLevel` setting | `SettingsContext` + pill picker in `SettingsScreen`; EN/KO labels |
 | Shared module | `src/game/ai/` — `types`, `profiles`, `geometry`, `selection`, `billiardsAi`, `fourBallAi` |
-| 3-Cushion planner | +1 ball-first, +2 fallback; no bank/wall safety |
-| 4-Ball planner | Ghost-ball / follow carom; foul avoidance (no safety shots) |
-| Difficulty spread | Wider `aimSpreadRad`, `badShotChance`, `topK` per level; beginner can still miss / pick bad shots |
+| 3-Cushion planner | Wall-first 3-wall / 2-wall / wall-center (restored from inline AI); break red-first penalty |
+| 4-Ball planner | Follow / ghost carom (restored inline logic); foul avoidance scales with level |
+| Difficulty spread | Route tier floor + `aimSpreadRad` + `badShotChance` + `topK` per level |
 | View integration | `BilliardsView` / `FourBallView` call planners; inline AI removed |
 
-#### Known 3-Cushion limitations (why expert still “just hits balls” sometimes)
+#### Known 3-Cushion limitations
 
-Without per-shot **physics replay**, the planner cannot guarantee real +1/+2:
-
-1. **Post-contact cue position** is estimated (`estimateCuePosAfterFirstContact`), not simulated — carom path after first ball is approximate.
-2. **Cut angle** for +1 uses ghost-ball follow heuristic (`ghostAimForCueExit`) — spin, throw, and ball radius affect real exit angle.
-3. **+2** aims along a 3-cushion mirror path to the first ball; hitting the second ball depends on cue speed and deflection after first contact.
-4. **Candidate filter** keeps only geometrically “valid” +1/+2 paths; when none exist, falls back to direct ball hit or wall safety — looks like “not playing 3-cushion”.
-5. **Scoring in game** may still differ from geometric prediction (cushion count timing, spin).
+Without per-shot **physics replay**, cushion routes may not always score +1/+2 in the engine — but shots **look and play like 3-cushion** (cue hits rails first). Scoring reliability is a future physics-sim task, not a routing task.
 
 **To reach human-like 3-cushion AI (future / out of scope v1):**
 
