@@ -25,11 +25,11 @@ export const touch = { minSize: 44 };
 export const typography = {
   label: 13,
   labelSm: 11,
-  score: 20,
-  scoreLabel: 12,
-  stat: 11,
-  statValue: 12,
-  turn: 12,
+  score: 17,
+  scoreLabel: 11,
+  stat: 10,
+  statValue: 11,
+  turn: 11,
 };
 
 /** Fixed HUD chrome heights — keep in sync with BOARD_UI_GAP budget */
@@ -38,12 +38,20 @@ export const hud = {
   navButtonHeight: 30,
   navButtonMinWidth: 68,
   /** Fixed tech slot — matches power-meter height so board size never jumps when charging. */
-  techRowHeight: 56,
-  scoreboardHeight: 52,
-  panelPadding: spacing.md * 2,
-  panelGap: spacing.sm * 2,
+  techRowHeight: 42,
+  scoreboardHeight: 40,
+  panelPaddingTop: spacing.sm,
+  panelPaddingBottom: 0,
+  panelGap: spacing.xs * 2,
   get chromeHeight() {
-    return this.panelPadding + this.panelGap + this.navBarHeight + this.scoreboardHeight + this.techRowHeight;
+    return (
+      this.panelPaddingTop
+      + this.panelPaddingBottom
+      + this.panelGap
+      + this.navBarHeight
+      + this.scoreboardHeight
+      + this.techRowHeight
+    );
   },
 };
 

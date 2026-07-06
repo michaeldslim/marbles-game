@@ -30,7 +30,7 @@ import GameHudPanel from './ui/GameHudPanel';
 import FourBallScoreboard from './gameHud/FourBallScoreboard';
 import ShotControls from './gameHud/ShotControls';
 import { EnglishType, SpinType, englishPickerContact, spinPickerContact } from '../game/shotTypes';
-import { BOARD_UI_GAP } from '../theme';
+import { BOARD_UI_GAP, colors } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
 import { getAiProfile, planFourBallShot, randomThinkDelayMs } from '../game/ai';
 
@@ -775,9 +775,9 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'stretch', paddingTop: 0 },
-  hudChrome: { width: '100%', alignItems: 'stretch' },
-  arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
+  container: { flex: 1, alignItems: 'stretch', paddingTop: 0, backgroundColor: colors.hudBg },
+  hudChrome: { width: '100%', alignItems: 'stretch', height: BOARD_UI_GAP, overflow: 'hidden' },
+  arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'center' },
   arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
 
   winBanner: {
