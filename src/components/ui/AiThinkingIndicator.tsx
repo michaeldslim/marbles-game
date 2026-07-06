@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { Lang, t } from '../../i18n';
-import { colors, typography } from '../../theme';
+import { colors, radii, typography } from '../../theme';
 
 interface Props {
   lang: Lang | undefined;
@@ -32,12 +32,15 @@ export default function AiThinkingIndicator({ lang }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   wrap: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: {
-    fontSize: typography.label,
+    fontSize: typography.labelSm,
     fontWeight: '700',
     color: colors.textMuted,
   },

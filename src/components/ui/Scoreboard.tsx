@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { spacing } from '../../theme';
+import { hud, spacing } from '../../theme';
 
 interface Props {
   left: React.ReactNode;
@@ -21,8 +21,10 @@ export default function Scoreboard({ left, center, right }: Props): JSX.Element 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     gap: spacing.xs,
     width: '100%',
+    height: hud.scoreboardHeight,
+    overflow: 'hidden',
   },
 });

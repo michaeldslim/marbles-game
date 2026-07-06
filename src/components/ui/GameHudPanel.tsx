@@ -18,8 +18,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.md,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    padding: spacing.md,
-    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: 0,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
     alignItems: 'stretch',
   },
 });

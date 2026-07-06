@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   wrapCompact: {
-    gap: 2,
+    gap: 1,
   },
   sectionLabel: {
     fontSize: 10,
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     minHeight: 30,
   },
   trackCompact: {
-    minHeight: 24,
+    minHeight: 18,
     padding: 1,
   },
   indicator: {
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
     paddingHorizontal: 2,
     zIndex: 1,
   },

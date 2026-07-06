@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../../theme';
+import { colors, hud, spacing, typography } from '../../theme';
 
 export type StatusTone = 'neutral' | 'success' | 'danger' | 'shot';
 
@@ -37,9 +37,11 @@ export default function ScoreboardCenter({
 const styles = StyleSheet.create({
   wrap: {
     flex: 1.2,
+    height: hud.scoreboardHeight,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xs,
+    overflow: 'hidden',
   },
   stats: {
     alignItems: 'center',
@@ -47,7 +49,7 @@ const styles = StyleSheet.create({
   status: {
     fontSize: typography.turn,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 1,
     textAlign: 'center',
   },
 });
