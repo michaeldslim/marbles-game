@@ -673,7 +673,32 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 - Typography + active-player treatment; relocate turn/status
 
 ### Phase 3 — Controls
-- `SegmentedControl`, `PowerMeter` card, AI thinking polish
+
+**Status:** Done  
+**Scope:** `SegmentedControl`, `PowerMeter` card, `AiThinkingIndicator`, shared `ShotControls` inside `GameHudPanel`.  
+**Next:** Phase 4 (Win overlay modal).
+
+| Component | File |
+|-----------|------|
+| Segmented spin/english | `src/components/ui/SegmentedControl.tsx` |
+| Power charge card | `src/components/ui/PowerMeter.tsx` |
+| AI thinking pulse | `src/components/ui/AiThinkingIndicator.tsx` |
+| Shared tech row | `src/components/gameHud/ShotControls.tsx` |
+| Picker sync helpers | `src/game/shotTypes.ts` |
+
+- Tech row moved inside `GameHudPanel` (nav + scoreboard + controls = one panel)
+- `BOARD_UI_GAP` → 196; `hud.techRowHeight` → 68
+- i18n: `spinSection`, `englishSection`, spin/english option labels (EN/KO)
+
+#### Phase 3 file checklist
+
+- [x] `src/components/ui/SegmentedControl.tsx`
+- [x] `src/components/ui/PowerMeter.tsx`
+- [x] `src/components/ui/AiThinkingIndicator.tsx`
+- [x] `src/components/gameHud/ShotControls.tsx`
+- [x] `src/game/shotTypes.ts`
+- [x] `src/i18n.ts` — control labels
+- [x] `BilliardsView.tsx` / `FourBallView.tsx` — wired, dead tech styles removed
 
 ### Phase 4 — Win flow & consistency
 - Win overlay modal; align Intro + Settings with theme tokens
@@ -685,7 +710,7 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 
 ## Constraints
 
-1. Retest ball sizing if `BOARD_UI_GAP` changes (currently `118` initial; runtime `hudHeight` from layout)
+1. Retest ball sizing if `BOARD_UI_GAP` changes (currently `196` initial; runtime `hudHeight` from layout)
 2. Test Korean strings (“재시작”, “뒤로”, AI level labels) on small screens
 3. HUD phases: keep scoring/foul **rules** in views — UI-only. Phase 1.5 AI is isolated shot planning; do not change settle/score logic
 4. Any HUD edit today requires two files until `GameHud` is extracted — prioritize extraction first
@@ -714,9 +739,9 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 
 ### Phase 2+
 - [x] Scoreboard extraction + dark HUD panel (see Phase 2 checklist)
-- [ ] `GameHud` shell with tech row (Phase 3)
-- [ ] Segmented controls for spin/english
-- [ ] Power meter container
+- [x] `GameHud` shell with tech row (Phase 3 — `ShotControls` in `GameHudPanel`)
+- [x] Segmented controls for spin/english
+- [x] Power meter container
 - [ ] Win overlay modal
-- [ ] i18n: FourBall hardcoded player labels
-- [ ] `BOARD_UI_GAP` updated and layout verified on device
+- [x] i18n: FourBall hardcoded player labels (Phase 2)
+- [x] `BOARD_UI_GAP` updated to 196 (runtime `hudHeight` via `onLayout`)
