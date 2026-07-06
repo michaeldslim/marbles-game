@@ -10,7 +10,7 @@ alwaysApply: false
 
 - **Stack:** Expo / React Native, no UI library; `StyleSheet` + hardcoded hex colors.
 - **HUD:** Shared `GameHudPanel` (full width, top radius only) — `GameHudNav` + game scoreboard + `ShotControls` inside one dark-green panel flush with the playboard.
-- **Layout budget:** `BOARD_UI_GAP = 180` (`hud.chromeHeight` in `theme.ts`); **fixed** — board layout does not use dynamic `onLayout` (prevents size jump when charging).
+- **Layout budget:** `BOARD_UI_GAP = 130` (`hud.chromeHeight` in `theme.ts`); **fixed** — board layout does not use dynamic `onLayout` (prevents size jump when charging). Compact HUD after Phase 3.5 (was 180).
 - **Navigation:** `GameHudNav` — back + restart with confirm; no turn text in nav (turn in scoreboard center).
 - **Scoreboard:** `BilliardsScoreboard` / `FourBallScoreboard` — dark felt cards, marble dots, accent bar for active player.
 - **Controls:** `ShotControls` — compact side-by-side `SegmentedControl` (spin | english), `PowerMeter` when charging, `AiThinkingIndicator` for AI turn.
@@ -642,7 +642,7 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 - [x] 4-Ball center: reds hit + last result; P2 label uses i18n
 - [x] `BilliardsView` / `FourBallView` share `Scoreboard` primitives — no copy-pasted score row JSX
 - [x] Win banner + tech row behaviour unchanged
-- [x] `BOARD_UI_GAP` fixed at 180 via `hud.chromeHeight` (see Phase 3)
+- [x] `BOARD_UI_GAP` fixed via `hud.chromeHeight` (180 at Phase 3 ship → **130** after Phase 3.5)
 
 #### Out of scope (explicit)
 
@@ -674,7 +674,7 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 
 **Status:** Done  
 **Scope:** `SegmentedControl`, `PowerMeter`, `AiThinkingIndicator`, shared `ShotControls` inside `GameHudPanel`.  
-**Next:** Phase 4 (Win overlay modal).
+**Next:** ~~Phase 4~~ → Phase 3.5 (compact HUD) → Phase 4 (Win overlay modal).
 
 #### What shipped
 
@@ -697,7 +697,7 @@ No new keys strictly required unless we add uppercase section labels later (Phas
 | Control layout | Compact side-by-side spin \| english (`SegmentedControl compact`) |
 | Rail markers | **9** white dots per wooden rail |
 
-#### `theme.ts` HUD budget (Phase 3 final)
+#### `theme.ts` HUD budget (Phase 3 ship — superseded by Phase 3.5)
 
 ```ts
 hud: {
@@ -738,7 +738,117 @@ hud: {
 - [x] `src/i18n.ts` — control labels
 - [x] `BilliardsView.tsx` / `FourBallView.tsx` — wired, dead tech styles removed
 - [x] `GameHudPanel.tsx` — full width, top-only radius
-- [x] `theme.ts` — fixed `chromeHeight` / `BOARD_UI_GAP`
+- [x] `theme.ts` — fixed `chromeHeight` / `BOARD_UI_GAP` (180 at ship; see Phase 3.5 for 130)
+
+---
+
+### Phase 3.5 — Compact HUD & layout stability
+
+**Status:** Done  
+**Scope:** Shrink HUD vertical footprint to give more playboard area; eliminate visible gap between HUD and table; keep board size stable across AI thinking, turn changes, and shot results. **Does not** change game logic, win banner, or Phase 4 overlay work.  
+**Next:** Phase 4 (Win overlay modal).
+
+**Goal:** Reduce scoreboard + tech row height, reclaim ~50px of vertical space for the table, and fix layout jumps / white strip between HUD bottom and wood rails.
+
+#### Problems fixed
+
+| Symptom | Root cause | Fix |
+|---------|------------|-----|
+| White gap between HUD and table | `arenaShell` used `justifyContent: 'flex-end'` — board pinned to bottom, slack space appeared above table | `justifyContent: 'flex-start'` — table flush under HUD |
+| HUD looked taller than content | `BOARD_UI_GAP` included bottom panel padding + budget mismatch vs `GameHudPanel` | `panelPaddingBottom: 0`; budget matches actual padding/gaps |
+| Scoreboard grew on miss/+1 | `lastResult` added a 3rd center line; row exceeded fixed card height | Fixed row height; `lastResult` inlined in stat line |
+| Tech row looked different when AI thinking | `AiThinkingIndicator` had no card background vs spin/power | Same dark card fill as `PowerMeter` |
+| Board size seemed to change on turn | Actual HUD height varied while `BOARD_UI_GAP` stayed fixed | `hudChrome` locked to `BOARD_UI_GAP`; scoreboard overflow clipped |
+
+#### Height budget (Phase 3.5 final)
+
+| Token | Phase 3 | Phase 3.5 |
+|-------|---------|-----------|
+| `scoreboardHeight` | 52 | **40** |
+| `techRowHeight` | 56 | **42** |
+| `panelPaddingTop` | 12 (md) | **8** (sm) |
+| `panelPaddingBottom` | 12 (md) | **0** (flush with table) |
+| `panelGap` | 16 (sm×2) | **8** (xs×2) |
+| `BOARD_UI_GAP` | 180 | **130** |
+
+```ts
+// src/theme.ts — Phase 3.5 HUD budget
+hud: {
+  navBarHeight: 32,
+  scoreboardHeight: 40,
+  techRowHeight: 42,
+  panelPaddingTop: spacing.sm,      // 8
+  panelPaddingBottom: 0,           // flush with playboard
+  panelGap: spacing.xs * 2,        // 8
+  // chromeHeight → 130 = BOARD_UI_GAP
+}
+
+export const typography = {
+  score: 17,        // was 20
+  scoreLabel: 11,   // was 12
+  stat: 10,
+  statValue: 11,
+  turn: 11,
+};
+```
+
+#### What changed
+
+| Area | Change |
+|------|--------|
+| `GameHudPanel` | `paddingTop: spacing.sm`, `paddingBottom: 0`, `gap: spacing.xs` |
+| `Scoreboard` / `ScoreboardCenter` | Fixed `height: hud.scoreboardHeight`, `overflow: 'hidden'` |
+| `BilliardsScoreboard` / `FourBallScoreboard` | `lastResult` on same line as stats (`쿠션 2/3 · 공 0/2 · 실패`) |
+| `ScoreSlot` | Tighter padding; smaller marble dot |
+| `SegmentedControl` | Compact track `minHeight: 18`; tighter segment padding |
+| `PowerMeter` | Shorter track (8px), smaller cancel button (26px) |
+| `AiThinkingIndicator` | Full-size dark card (`rgba(0,0,0,0.22)`), `labelSm` text |
+| `ShotControls` | `overflow: 'hidden'` on fixed tech row |
+| `BilliardsView` / `FourBallView` | `hudChrome`: `height: BOARD_UI_GAP`, `overflow: 'hidden'` |
+| `BilliardsView` / `FourBallView` | `arenaShell`: `justifyContent: 'flex-start'` |
+| `BilliardsView` / `FourBallView` | `container`: `backgroundColor: colors.hudBg` (no white bleed) |
+
+#### Layout integration
+
+```
+container (flex 1, hudBg)
+  hudChrome (fixed height = BOARD_UI_GAP = 130)
+    GameHudPanel (top padding only; flat bottom edge)
+      GameHudNav
+      Scoreboard (fixed 40px)
+      ShotControls (fixed 42px)
+  arenaShell (flex 1, flex-start)    ← table starts immediately below HUD
+    arenaWrap
+      wood SVG + felt board
+```
+
+- Board dimensions still from `computeBoardDimensions(containerH, BOARD_UI_GAP)` — no runtime HUD `onLayout`.
+- Leftover vertical space (if board width-limited) sits **below** the table, not between HUD and table.
+
+#### Acceptance criteria
+
+- [x] `BOARD_UI_GAP` = **130**; playboard ~50px taller vs Phase 3 (180)
+- [x] No visible white/dark gap between HUD bottom and table top rails
+- [x] Scoreboard height constant when `lastResult` appears or turn changes
+- [x] Tech row height constant across spin UI, power charge, and AI thinking
+- [x] AI thinking row visually matches power meter card style
+- [x] Board size unchanged when switching spin ↔ charge ↔ AI turn
+- [x] Both `BilliardsView` and `FourBallView` share the same layout pattern
+
+#### Phase 3.5 file checklist
+
+- [x] `src/theme.ts` — compact tokens + `panelPaddingTop` / `panelPaddingBottom`
+- [x] `src/components/ui/GameHudPanel.tsx` — top-only vertical padding
+- [x] `src/components/ui/Scoreboard.tsx` — fixed row height
+- [x] `src/components/ui/ScoreboardCenter.tsx` — fixed center height
+- [x] `src/components/ui/ScoreSlot.tsx` — compact internals
+- [x] `src/components/ui/SegmentedControl.tsx` — tighter compact track
+- [x] `src/components/ui/PowerMeter.tsx` — shorter charge UI
+- [x] `src/components/ui/AiThinkingIndicator.tsx` — card background
+- [x] `src/components/gameHud/ShotControls.tsx` — overflow clip
+- [x] `src/components/gameHud/BilliardsScoreboard.tsx` — inline `lastResult`
+- [x] `src/components/gameHud/FourBallScoreboard.tsx` — inline `lastResult`
+- [x] `BilliardsView.tsx` / `FourBallView.tsx` — `hudChrome` height, `arenaShell` flex-start, container bg
 
 ---
 
@@ -897,7 +1007,7 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 
 ## Constraints
 
-1. Retest ball sizing if `BOARD_UI_GAP` changes (currently **180** fixed; no runtime `onLayout` on HUD)
+1. Retest ball sizing if `BOARD_UI_GAP` changes (currently **130** fixed; no runtime `onLayout` on HUD)
 2. Test Korean strings (“재시작”, “뒤로”, spin/english labels) on small screens — compact side-by-side controls
 3. HUD phases: keep scoring/foul **rules** in views — UI-only. Phase 1.5 AI is isolated shot planning; do not change settle/score logic
 4. Win overlay must not increase `hudChrome` height — overlay lives on `arenaShell`, not in HUD flow
@@ -926,9 +1036,15 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 
 ### Phase 3
 - [x] `SegmentedControl` + `PowerMeter` + `AiThinkingIndicator` + `ShotControls`
-- [x] Fixed HUD height (`BOARD_UI_GAP` 180); board stable in charge mode
+- [x] Fixed HUD height (`BOARD_UI_GAP` 180 at ship); board stable in charge mode
 - [x] Full-width `GameHudPanel`, flat bottom edge on playboard
 - [x] i18n: spin/english labels
+
+### Phase 3.5
+- [x] Compact HUD — `BOARD_UI_GAP` **130** (scoreboard 40, tech row 42)
+- [x] HUD flush with table (`arenaShell` flex-start; panel bottom padding 0)
+- [x] Fixed scoreboard height; `lastResult` inlined in stat line
+- [x] AI thinking card matches power meter; no layout jump on turn/result
 
 ### Phase 4 (next)
 - [ ] `WinOverlay` on dimmed table; remove inline `winBanner`
