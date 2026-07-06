@@ -259,7 +259,7 @@ Replace header `TouchableOpacity` back with `<IconButton icon="chevron-back" lab
 
 `src/utils/RailMarkers.tsx` — SVG overlay on the wood-background layer in both game views.
 
-- **7 white circles** per side, vertically centered on each wooden rail (left/right of the green felt)
+- **9 white circles** per side, vertically centered on each wooden rail (left/right of the green felt)
 - **Position:** horizontal center of each rail (`railWidth = (totalWidth - boardW) / 2`); vertical spacing from `boardH` with 5% top/bottom margin
 - **Size:** dot radius scales with rail width (`railWidth * 0.14`, max 3px)
 - **Responsive:** uses `size.w`, `boardW`, `boardH` from `computeBoardDimensions()` — scales with phone/tablet layout via `onLayout`

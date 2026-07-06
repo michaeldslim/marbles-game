@@ -15,7 +15,7 @@ export default function RailMarkers({
   totalWidth,
   boardW,
   boardH,
-  dotCount = 7,
+  dotCount = 9,
 }: Props) {
   const railWidth = (totalWidth - boardW) / 2;
   if (railWidth < 4 || dotCount < 1) return null;
