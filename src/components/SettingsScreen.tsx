@@ -312,7 +312,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           labelKo="3쿠션 목표 점수"
           lang={lang}
           value={settings.winScore3C}
-          min={3} max={20} step={1}
+          min={2} max={20} step={1}
           format={(v) => `${v} pts`}
           onValueChange={(v) => updateSetting('winScore3C', v)}
           desc={{
@@ -325,7 +325,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
           labelKo="사구 목표 점수"
           lang={lang}
           value={settings.winScore4B}
-          min={3} max={20} step={1}
+          min={2} max={20} step={1}
           format={(v) => `${v} pts`}
           onValueChange={(v) => updateSetting('winScore4B', v)}
           desc={{
