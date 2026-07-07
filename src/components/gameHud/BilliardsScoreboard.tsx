@@ -16,6 +16,7 @@ interface Props {
   ballsHit: number;
   lastResult: string | null;
   ready: boolean;
+  winner?: 1 | 2 | null;
 }
 
 function resultTone(result: string | null): 'neutral' | 'success' | 'danger' {
@@ -34,14 +35,18 @@ export default function BilliardsScoreboard({
   ballsHit,
   lastResult,
   ready,
+  winner = null,
 }: Props): JSX.Element {
   const p2Label = vsAI ? t(lang, 'ai') : t(lang, 'player2');
+  const gameActive = !winner;
 
-  const turnLabel = ready
-    ? `${turn === 1 ? t(lang, 'player1') : p2Label} ${t(lang, 'turnSuffix')}`
-    : t(lang, 'shot');
+  const turnLabel = gameActive
+    ? ready
+      ? `${turn === 1 ? t(lang, 'player1') : p2Label} ${t(lang, 'turnSuffix')}`
+      : t(lang, 'shot')
+    : undefined;
 
-  const turnTone = ready ? 'neutral' : 'shot';
+  const turnTone = gameActive && !ready ? 'shot' : 'neutral';
 
   return (
     <Scoreboard
@@ -49,7 +54,7 @@ export default function BilliardsScoreboard({
         <ScoreSlot
           label={t(lang, 'player1')}
           score={score1}
-          active={turn === 1 && ready}
+          active={turn === 1 && gameActive}
           marbleColor={colors.marbleWhite}
         />
       }
@@ -84,7 +89,7 @@ export default function BilliardsScoreboard({
         <ScoreSlot
           label={p2Label}
           score={score2}
-          active={turn === 2 && ready}
+          active={turn === 2 && gameActive}
           marbleColor={vsAI ? colors.marbleAi : colors.marbleYellow}
         />
       }

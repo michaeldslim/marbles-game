@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, PanResponder, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, PanResponder, LayoutChangeEvent, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import Svg, { Rect, Defs, Pattern, Image as SvgImage } from 'react-native-svg';
 import BilliardsMarbles from '../utils/BilliardsMarbles';
 import RailMarkers from '../utils/RailMarkers';
@@ -29,6 +29,8 @@ import GameHudNav from './ui/GameHudNav';
 import GameHudPanel from './ui/GameHudPanel';
 import FourBallScoreboard from './gameHud/FourBallScoreboard';
 import ShotControls from './gameHud/ShotControls';
+import { getFourBallWinnerDisplay } from './gameHud/getWinnerDisplay';
+import WinOverlay from './ui/WinOverlay';
 import { EnglishType, SpinType, englishPickerContact, spinPickerContact } from '../game/shotTypes';
 import { BOARD_UI_GAP, colors } from '../theme';
 import { BOARD_INSET, computeBoardDimensions } from '../game/boardLayout';
@@ -596,6 +598,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
   };
 
   const { boardW, boardH } = computeBoardDimensions(size.w, size.h, BOARD_UI_GAP);
+  const winnerDisplay = winner ? getFourBallWinnerDisplay(winner, vsAI, lang) : null;
 
   const handleShotTypeChange = (key: SpinType) => {
     setShotType(key);
@@ -652,18 +655,6 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           />
         )}
       </GameHudPanel>
-
-      {/* Win banner */}
-      {winner && (
-        <View style={styles.winBanner}>
-          <Text style={styles.winText}>
-            {winner === 'yellow' ? `🟡 ${t(lang, 'player1')} 🏆` : vsAI ? `🤖 ${t(lang, 'ai')} 🏆` : `⚪ ${t(lang, 'player2')} 🏆`}
-          </Text>
-          <TouchableOpacity style={styles.playAgainBtn} onPress={restart}>
-            <Text style={styles.playAgainText}>{t(lang, 'playAgain')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       </View>
 
@@ -769,6 +760,18 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           />
         </View>
       </View>
+      {winnerDisplay ? (
+        <WinOverlay
+          visible
+          lang={lang}
+          winnerLabel={winnerDisplay.label}
+          winnerMarbleColor={winnerDisplay.marbleColor}
+          subtitle={vsAI && winner === 'yellow' ? t(lang, 'youWin') : undefined}
+          onPlayAgain={restart}
+          onBackToMenu={onBack}
+          skipRestartConfirm
+        />
+      ) : null}
       </View>
     </View>
   );
@@ -779,12 +782,4 @@ const styles = StyleSheet.create({
   hudChrome: { width: '100%', alignItems: 'stretch', height: BOARD_UI_GAP, overflow: 'hidden' },
   arenaShell: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'center' },
   arenaWrap: { width: '100%', alignItems: 'center', backgroundColor: 'transparent' },
-
-  winBanner: {
-    width: '95%', alignSelf: 'center', backgroundColor: '#f4c430', borderRadius: 10,
-    paddingVertical: 10, alignItems: 'center', marginBottom: 4, gap: 8,
-  },
-  winText: { fontSize: 20, fontWeight: '800', color: '#111' },
-  playAgainBtn: { backgroundColor: '#111', borderRadius: 6, paddingHorizontal: 20, paddingVertical: 8 },
-  playAgainText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
