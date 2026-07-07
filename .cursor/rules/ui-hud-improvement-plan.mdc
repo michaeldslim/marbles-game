@@ -15,6 +15,8 @@ alwaysApply: false
 - **Scoreboard:** `BilliardsScoreboard` / `FourBallScoreboard` — dark felt cards, marble dots, accent bar for active player.
 - **Controls:** `ShotControls` — compact side-by-side `SegmentedControl` (spin | english), `PowerMeter` when charging, `AiThinkingIndicator` for AI turn.
 - **Win state:** `WinOverlay` on dimmed playboard (`arenaShell`); HUD stays visible; inline `winBanner` removed (Phase 4).
+- **Intro / Settings:** Dark billiards theme on intro; settings rows/chips use `theme` tokens (Phase 5).
+- **Haptics:** `expo-haptics` on nav, segments, win CTAs, intro/settings toggles (Phase 5).
 - **i18n:** `t(lang, …)` for nav, scoreboard, controls; spin/english labels EN/KO.
 - **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings. Wall-first 3-cushion routing — see Phase 1.5.
 
@@ -26,9 +28,9 @@ alwaysApply: false
 | B | Scoreboard — P1 \| stats + turn \| P2/AI |
 | C | Spin + English segmented controls / power meter / AI thinking |
 
-### Still dated (Phase 5+)
+### Still dated (Phase 6+)
 
-- Intro screen + Settings use light gray cards, not `theme` tokens
+- (none — HUD plan complete through Phase 5)
 
 ---
 
@@ -994,7 +996,7 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 - [x] Back to menu calls `onBack`
 - [x] Winner label uses i18n + marble dot (minimal emoji — trophy only)
 - [x] Board / HUD height unchanged when winner appears (no layout jump)
-- [ ] (Optional) Intro / Settings use shared `theme` colors
+- [x] (Optional) Intro / Settings use shared `theme` colors
 
 #### Out of scope
 
@@ -1010,15 +1012,32 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 - [x] `BilliardsView.tsx` — overlay wired, winBanner removed
 - [x] `FourBallView.tsx` — overlay wired, winBanner removed
 - [x] `BilliardsScoreboard.tsx` — `winner` prop clears turn on game end
-- [ ] (Optional) `IntroScreen.tsx` / `SettingsScreen.tsx` — theme tokens
+- [x] (Optional) `IntroScreen.tsx` / `SettingsScreen.tsx` — theme tokens
 
 ### Phase 5 — Polish (optional)
 
-**Status:** Not started  
+**Status:** Done  
 **Next:** —
 
-- `expo-haptics` on press; light transitions; dark HUD mode
-- (Optional) Intro / Settings `theme` token alignment (deferred from Phase 4)
+#### What shipped
+
+| Area | Done |
+|------|------|
+| `expo-haptics` | `src/utils/haptics.ts` — `hapticLight`, `hapticMedium`, `hapticSelection` |
+| Haptics wired | `IconButton`, `WinOverlay` CTAs, `SegmentedControl`, Intro mode buttons, Settings lang/AI pills |
+| Win overlay transition | Fade + spring scale on `WinOverlay` appear |
+| Intro dark theme | `colors.hudBg` screen; `scoreCard` cards; `accent` / `felt` / `shot` buttons |
+| Settings theme tokens | Header, sections, chips, sliders, rows use `theme` colors |
+| `theme.ts` | `screenBg`, `surface`, `surfaceMuted`, `textOnLight`, etc. for non-HUD screens |
+
+#### Phase 5 file checklist
+
+- [x] `expo-haptics` dependency
+- [x] `src/utils/haptics.ts`
+- [x] `IconButton.tsx`, `WinOverlay.tsx`, `SegmentedControl.tsx` — haptics
+- [x] `IntroScreen.tsx` — dark billiards theme + haptics
+- [x] `SettingsScreen.tsx` — theme token pass + haptics on toggles
+- [x] `src/theme.ts` — screen/surface tokens
 
 ---
 
@@ -1067,7 +1086,9 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 - [x] `WinOverlay` on dimmed table; inline `winBanner` removed
 - [x] Play Again + Back to menu CTAs (`backToMenu`, `youWin` i18n)
 - [x] `getWinnerDisplay` helper; scoreboard win state on both games
-- [ ] (Optional) Intro / Settings theme alignment
+- [x] (Optional) Intro / Settings theme alignment
 
-### Phase 5 (next)
-- [ ] `expo-haptics` on press; light transitions; dark HUD mode
+### Phase 5
+- [x] `expo-haptics` on press (`haptics.ts` + wired in shared controls)
+- [x] Light transitions — `WinOverlay` fade + spring
+- [x] Intro dark billiards theme; Settings `theme` token pass
