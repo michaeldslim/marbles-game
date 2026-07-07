@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, StyleSheet, View, Insets } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, hud, radii, spacing, touch, typography } from '../../theme';
+import { hapticLight } from '../../utils/haptics';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -33,9 +34,14 @@ export default function IconButton({
   const iconColor = isDanger ? colors.danger : colors.textOnDark;
   const iconSize = compact ? 16 : 20;
 
+  const handlePress = () => {
+    hapticLight();
+    onPress();
+  };
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       accessibilityLabel={accessibilityLabel ?? label}
       hitSlop={compact ? compactHitSlop : undefined}
       style={({ pressed }) => [

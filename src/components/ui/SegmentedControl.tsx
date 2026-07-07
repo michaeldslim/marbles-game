@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, radii, spacing, typography } from '../../theme';
+import { hapticSelection } from '../../utils/haptics';
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -51,7 +52,10 @@ export default function SegmentedControl<T extends string>({
             <TouchableOpacity
               key={opt.value}
               style={styles.segment}
-              onPress={() => onChange(opt.value)}
+              onPress={() => {
+                if (opt.value !== value) hapticSelection();
+                onChange(opt.value);
+              }}
               activeOpacity={0.75}
             >
               <Text style={[styles.segmentText, compact && styles.segmentTextCompact, active && styles.segmentTextActive]} numberOfLines={1}>

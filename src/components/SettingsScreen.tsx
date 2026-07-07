@@ -6,7 +6,8 @@ import Slider from '@react-native-community/slider';
 import { useSettings, DEFAULT_SETTINGS, BALL_RADIUS_MIN, BALL_RADIUS_MAX } from '../context/SettingsContext';
 import { t } from '../i18n';
 import IconButton from './ui/IconButton';
-import { hud } from '../theme';
+import { colors, hud, radii, spacing, typography } from '../theme';
+import { hapticSelection } from '../utils/haptics';
 import { AI_LEVELS } from '../game/ai';
 import type { AiLevel } from '../game/ai';
 
@@ -60,9 +61,9 @@ function SettingRow({
         value={localValue}
         onValueChange={(v: number) => setLocalValue(v)}
         onSlidingComplete={(v: number) => onValueChange(v)}
-        minimumTrackTintColor="#2cc47a"
-        maximumTrackTintColor="#ccc"
-        thumbTintColor="#2cc47a"
+        minimumTrackTintColor={colors.accent}
+        maximumTrackTintColor={colors.surfaceMuted}
+        thumbTintColor={colors.accent}
       />
       <View style={styles.minMax}>
         <Text style={styles.minMaxText}>{min}</Text>
@@ -94,18 +95,18 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
       </View>
 
       {/* Language toggle */}
-      <View style={{ padding: 12, flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+      <View style={styles.langRow}>
         <TouchableOpacity
           style={[styles.langBtn, settings.language === 'en' ? styles.langActive : null]}
-          onPress={() => updateSetting('language', 'en')}
+          onPress={() => { hapticSelection(); updateSetting('language', 'en'); }}
         >
-          <Text style={{ color: settings.language === 'en' ? '#fff' : '#1b4332', fontWeight: '700' }}>EN</Text>
+          <Text style={[styles.langBtnText, settings.language === 'en' ? styles.langBtnTextActive : null]}>EN</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.langBtn, settings.language === 'ko' ? styles.langActive : null]}
-          onPress={() => updateSetting('language', 'ko')}
+          onPress={() => { hapticSelection(); updateSetting('language', 'ko'); }}
         >
-          <Text style={{ color: settings.language === 'ko' ? '#fff' : '#1b4332', fontWeight: '700' }}>KO</Text>
+          <Text style={[styles.langBtnText, settings.language === 'ko' ? styles.langBtnTextActive : null]}>KO</Text>
         </TouchableOpacity>
       </View>
 
@@ -354,7 +355,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
                 <TouchableOpacity
                   key={level}
                   style={[styles.aiLevelBtn, active ? styles.aiLevelActive : null]}
-                  onPress={() => updateSetting('aiLevel', level as AiLevel)}
+                  onPress={() => { hapticSelection(); updateSetting('aiLevel', level as AiLevel); }}
                 >
                   <Text style={[styles.aiLevelBtnText, active ? styles.aiLevelBtnTextActive : null]}>
                     {t(lang, labelKey)}
@@ -378,7 +379,7 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
               <Switch
                 value={settings.bmEnabled ?? false}
                 onValueChange={(v) => updateSetting('bmEnabled', v)}
-                trackColor={{ true: '#2cc47a', false: '#ccc' }}
+                trackColor={{ true: colors.accent, false: colors.surfaceMuted }}
                 thumbColor={(settings.bmEnabled ?? false) ? '#fff' : '#fff'}
               />
               <Text style={styles.bmToggleText}>
@@ -424,77 +425,88 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f7' },
+  container: { flex: 1, backgroundColor: colors.screenBg },
 
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4,
-    height: hud.navBarHeight + 8, backgroundColor: '#1b4332', gap: 8,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xs,
+    height: hud.navBarHeight + 8, backgroundColor: colors.hudBg, gap: spacing.sm,
   },
-  title: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  title: { flex: 1, color: colors.textOnDark, fontSize: typography.label + 3, fontWeight: '700', textAlign: 'center' },
   resetBtn: {
-    backgroundColor: '#e44', borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: colors.danger, borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs + 2,
   },
-  resetText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  resetText: { color: colors.textOnDark, fontWeight: '700', fontSize: typography.labelSm + 1 },
 
-  scroll: { padding: 16, paddingBottom: 40 },
+  langRow: {
+    padding: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    backgroundColor: colors.hudBg,
+  },
+
+  scroll: { padding: spacing.lg, paddingBottom: 40 },
 
   section: {
-    fontSize: 13, fontWeight: '800', color: '#1b4332',
-    marginTop: 16, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5,
+    fontSize: typography.labelSm + 2, fontWeight: '800', color: colors.hudBg,
+    marginTop: spacing.lg, marginBottom: spacing.xs + 2, textTransform: 'uppercase', letterSpacing: 0.5,
   },
 
   row: {
-    backgroundColor: '#fff', borderRadius: 10, padding: 12,
-    marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.05,
+    backgroundColor: colors.surface, borderRadius: radii.sm + 4, padding: spacing.md,
+    marginBottom: spacing.sm, shadowColor: '#000', shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 1 }, shadowRadius: 4, elevation: 2,
   },
-  rowHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  rowLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: '#222' },
-  rowLabelKo: { fontSize: 11, color: '#888', marginRight: 4 },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
+  rowLabel: { flex: 1, fontSize: typography.labelSm + 2, fontWeight: '600', color: colors.textOnLight },
+  rowLabelKo: { fontSize: typography.labelSm, color: colors.textMutedLight, marginRight: spacing.xs },
   helpBtn: {
     width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
-    borderColor: '#2d6a4f', alignItems: 'center', justifyContent: 'center',
-    marginRight: 6,
+    borderColor: colors.felt, alignItems: 'center', justifyContent: 'center',
+    marginRight: spacing.xs + 2,
   },
-  helpBtnText: { fontSize: 11, fontWeight: '700', color: '#2d6a4f', lineHeight: 13 },
+  helpBtnText: { fontSize: typography.labelSm, fontWeight: '700', color: colors.felt, lineHeight: 13 },
   descBox: {
-    backgroundColor: '#e8f5ee', borderRadius: 6, padding: 8,
-    marginBottom: 6, borderLeftWidth: 3, borderLeftColor: '#2cc47a',
+    backgroundColor: colors.descBg, borderRadius: radii.sm, padding: spacing.sm,
+    marginBottom: spacing.xs + 2, borderLeftWidth: 3, borderLeftColor: colors.accent,
   },
-  descEn: { fontSize: 12, color: '#1b4332', marginBottom: 3, lineHeight: 17 },
-  descKo: { fontSize: 12, color: '#2d6a4f', lineHeight: 17 },
+  descEn: { fontSize: typography.labelSm + 1, color: colors.hudBg, marginBottom: 3, lineHeight: 17 },
+  descKo: { fontSize: typography.labelSm + 1, color: colors.felt, lineHeight: 17 },
   rowValue: {
-    fontSize: 13, fontWeight: '800', color: '#1b4332',
+    fontSize: typography.labelSm + 2, fontWeight: '800', color: colors.hudBg,
     minWidth: 52, textAlign: 'right',
   },
   slider: { width: '100%', height: 32 },
   minMax: { flexDirection: 'row', justifyContent: 'space-between' },
-  minMaxText: { fontSize: 10, color: '#bbb' },
+  minMaxText: { fontSize: typography.stat, color: '#bbb' },
 
   defaults: {
-    marginTop: 24, backgroundColor: '#f0f0f0', borderRadius: 10,
-    padding: 12,
+    marginTop: spacing.lg + 8, backgroundColor: colors.surfaceDim, borderRadius: radii.sm + 4,
+    padding: spacing.md,
   },
-  defaultsTitle: { fontSize: 12, fontWeight: '700', color: '#555', marginBottom: 8 },
-  defaultItem: { fontSize: 11, color: '#666', marginBottom: 2 },
+  defaultsTitle: { fontSize: typography.labelSm + 1, fontWeight: '700', color: '#555', marginBottom: spacing.sm },
+  defaultItem: { fontSize: typography.labelSm, color: colors.textMutedLight, marginBottom: 2 },
   defaultVal: { fontWeight: '700', color: '#333' },
   langBtn: {
-    width: 68, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e8e8e8',
+    width: 68, height: 36, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.navGhost,
   },
-  langActive: { backgroundColor: '#1b4332' },
-  aiLevelDesc: { fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 17 },
-  aiLevelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  langActive: { backgroundColor: colors.accent },
+  langBtnText: { fontWeight: '700', color: colors.textOnDark, opacity: 0.85 },
+  langBtnTextActive: { color: colors.textOnDark, opacity: 1 },
+  aiLevelDesc: { fontSize: typography.labelSm + 1, color: colors.textMutedLight, marginBottom: spacing.sm + 2, lineHeight: 17 },
+  aiLevelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   aiLevelBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#e8e8e8',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceMuted,
     minWidth: 72,
     alignItems: 'center',
   },
-  aiLevelActive: { backgroundColor: '#1b4332' },
-  aiLevelBtnText: { fontSize: 12, fontWeight: '700', color: '#1b4332' },
-  aiLevelBtnTextActive: { color: '#fff' },
-  bmToggleText: { marginLeft: 8, fontSize: 13, fontWeight: '700', color: '#1b4332' },
+  aiLevelActive: { backgroundColor: colors.hudBg },
+  aiLevelBtnText: { fontSize: typography.labelSm + 1, fontWeight: '700', color: colors.hudBg },
+  aiLevelBtnTextActive: { color: colors.textOnDark },
+  bmToggleText: { marginLeft: spacing.sm, fontSize: typography.labelSm + 2, fontWeight: '700', color: colors.hudBg },
 });

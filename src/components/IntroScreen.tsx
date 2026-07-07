@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
+import { colors, radii, spacing, touch, typography } from '../theme';
+import { hapticLight, hapticMedium } from '../utils/haptics';
 
 export type GameMode = 'billiards' | 'billiards-ai' | '4ball' | '4ball-ai';
 
@@ -13,11 +15,21 @@ interface Props {
 export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Element {
   const { settings } = useSettings();
   const lang = settings.language ?? 'en';
+
+  const selectMode = (mode: GameMode) => {
+    hapticMedium();
+    onSelect(mode);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.titleRow}>
+      <View style={styles.headerStrip}>
         <Text style={styles.title}>{t(lang, 'chooseGameTitle')}</Text>
-        <TouchableOpacity style={styles.settingsBtn} onPress={onSettings}>
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          onPress={() => { hapticLight(); onSettings(); }}
+          accessibilityLabel={t(lang, 'settings')}
+        >
           <Text style={styles.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
@@ -26,10 +38,10 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
         <Text style={styles.cardTitle}>🎱 {t(lang, 'play3C')}</Text>
         <Text style={styles.cardDesc}>{t(lang, 'cardDescBilliards')}</Text>
         <View style={styles.btnRow}>
-          <TouchableOpacity style={[styles.btn, styles.btnBilliards, styles.btnFlex]} onPress={() => onSelect('billiards')}>
+          <TouchableOpacity style={[styles.btn, styles.btnAccent, styles.btnFlex]} onPress={() => selectMode('billiards')}>
             <Text style={styles.btnText}>{t(lang, 'play3C_2p')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.btnAI, styles.btnFlex]} onPress={() => onSelect('billiards-ai')}>
+          <TouchableOpacity style={[styles.btn, styles.btnFelt, styles.btnFlex]} onPress={() => selectMode('billiards-ai')}>
             <Text style={styles.btnText}>{t(lang, 'play3C_ai')} 🤖</Text>
           </TouchableOpacity>
         </View>
@@ -39,10 +51,10 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
         <Text style={styles.cardTitle}>🟡 4-Ball</Text>
         <Text style={styles.cardDesc}>{t(lang, 'cardDesc4Ball')}</Text>
         <View style={styles.btnRow}>
-          <TouchableOpacity style={[styles.btn, styles.btn4ball, styles.btnFlex]} onPress={() => onSelect('4ball')}>
+          <TouchableOpacity style={[styles.btn, styles.btnShot, styles.btnFlex]} onPress={() => selectMode('4ball')}>
             <Text style={styles.btnText}>{t(lang, 'play4B_2p')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.btnAI, styles.btnFlex]} onPress={() => onSelect('4ball-ai')}>
+          <TouchableOpacity style={[styles.btn, styles.btnFelt, styles.btnFlex]} onPress={() => selectMode('4ball-ai')}>
             <Text style={styles.btnText}>{t(lang, 'play4B_ai')} 🤖</Text>
           </TouchableOpacity>
         </View>
@@ -56,77 +68,79 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f7f7f7',
+    padding: spacing.lg,
+    backgroundColor: colors.hudBg,
   },
-  titleRow: {
-    flexDirection: 'row', alignItems: 'center',
-    marginBottom: 28, width: '100%',
+  headerStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg + 4,
+    width: '100%',
   },
   title: {
     flex: 1,
     fontSize: 22,
     fontWeight: '700',
-    color: '#222',
+    color: colors.textOnDark,
   },
   settingsBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#e8e8e8',
-    alignItems: 'center', justifyContent: 'center',
+    width: touch.minSize,
+    height: touch.minSize,
+    borderRadius: touch.minSize / 2,
+    backgroundColor: colors.navGhost,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingsIcon: { fontSize: 20 },
   card: {
     width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: colors.scoreCard,
+    borderRadius: radii.md + 2,
+    padding: spacing.lg + 4,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.navGhost,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: typography.score + 3,
     fontWeight: '700',
-    marginBottom: 10,
-    color: '#222',
+    marginBottom: spacing.sm + 2,
+    color: colors.textOnDark,
   },
   cardDesc: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: typography.label,
+    color: colors.textMuted,
     lineHeight: 21,
-    marginBottom: 18,
-  },
-  bold: {
-    fontWeight: '700',
-    color: '#222',
+    marginBottom: spacing.md + 6,
   },
   btn: {
-    borderRadius: 8,
-    paddingVertical: 13,
+    borderRadius: radii.sm,
+    paddingVertical: spacing.md + 1,
     alignItems: 'center',
+    minHeight: touch.minSize,
+    justifyContent: 'center',
   },
-  btnBilliards: {
-    backgroundColor: '#2cc47a',
+  btnAccent: {
+    backgroundColor: colors.accent,
   },
-  btn4ball: {
-    backgroundColor: '#e8a020',
+  btnShot: {
+    backgroundColor: colors.shot,
   },
-  btnAI: {
-    backgroundColor: '#7c3aed',
+  btnFelt: {
+    backgroundColor: colors.felt,
+    borderWidth: 1,
+    borderColor: colors.scoreCardActive,
   },
   btnRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   btnFlex: {
     flex: 1,
   },
   btnText: {
-    color: '#fff',
+    color: colors.textOnDark,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: typography.label + 3,
   },
 });

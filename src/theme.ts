@@ -14,6 +14,14 @@ export const colors = {
   marbleYellow: '#f4c430',
   marbleWhite: '#f0f0f0',
   marbleAi: '#a8c5b8',
+  /** Non-HUD screens (intro, settings scroll area) */
+  screenBg: '#f7f7f7',
+  surface: '#ffffff',
+  surfaceMuted: '#e8e8e8',
+  surfaceDim: '#f0f0f0',
+  textOnLight: '#222222',
+  textMutedLight: '#666666',
+  descBg: '#e8f5ee',
 };
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16 };

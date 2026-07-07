@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Lang, t } from '../../i18n';
 import { colors, radii, spacing, touch, typography } from '../../theme';
 import { confirmRestart } from './confirmRestart';
+import { hapticLight, hapticMedium } from '../../utils/haptics';
 
 interface Props {
   visible: boolean;
@@ -25,13 +26,34 @@ export default function WinOverlay({
   onBackToMenu,
   skipRestartConfirm = true,
 }: Props): JSX.Element | null {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.96)).current;
+
+  useEffect(() => {
+    if (!visible) return;
+    opacity.setValue(0);
+    scale.setValue(0.96);
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 8, tension: 80, useNativeDriver: true }),
+    ]).start();
+  }, [visible, opacity, scale]);
+
   if (!visible) return null;
 
-  const handlePlayAgain = () => confirmRestart(lang, onPlayAgain, skipRestartConfirm);
+  const handlePlayAgain = () => {
+    hapticMedium();
+    confirmRestart(lang, onPlayAgain, skipRestartConfirm);
+  };
+
+  const handleBackToMenu = () => {
+    hapticLight();
+    onBackToMenu();
+  };
 
   return (
-    <View style={styles.scrim} pointerEvents="box-none">
-      <View style={styles.card}>
+    <Animated.View style={[styles.scrim, { opacity }]} pointerEvents="box-none">
+      <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
         <Text style={styles.trophy}>🏆</Text>
         <View style={styles.winnerRow}>
           {winnerMarbleColor ? (
@@ -48,14 +70,14 @@ export default function WinOverlay({
           <Text style={styles.primaryBtnText}>{t(lang, 'playAgain')}</Text>
         </Pressable>
         <Pressable
-          onPress={onBackToMenu}
+          onPress={handleBackToMenu}
           accessibilityLabel={t(lang, 'backToMenu')}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}
         >
           <Text style={styles.secondaryBtnText}>{t(lang, 'backToMenu')}</Text>
         </Pressable>
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
