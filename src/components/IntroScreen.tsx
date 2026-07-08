@@ -4,6 +4,9 @@ import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
 import { colors, radii, spacing, touch, typography } from '../theme';
 import { hapticLight, hapticMedium } from '../utils/haptics';
+import appConfig from '../../app.json';
+
+const appVersion = appConfig.expo.version;
 
 export type GameMode = 'billiards' | 'billiards-ai' | '4ball' | '4ball-ai';
 
@@ -47,7 +50,7 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
         </View>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, styles.cardLast]}>
         <Text style={styles.cardTitle}>🟡 4-Ball</Text>
         <Text style={styles.cardDesc}>{t(lang, 'cardDesc4Ball')}</Text>
         <View style={styles.btnRow}>
@@ -59,6 +62,7 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
           </TouchableOpacity>
         </View>
       </View>
+      <Text style={styles.version}>v{appVersion}</Text>
     </ScrollView>
   );
 }
@@ -101,6 +105,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.navGhost,
   },
+  cardLast: {
+    marginBottom: spacing.sm,
+  },
   cardTitle: {
     fontSize: typography.score + 3,
     fontWeight: '700',
@@ -142,5 +149,12 @@ const styles = StyleSheet.create({
     color: colors.textOnDark,
     fontWeight: '700',
     fontSize: typography.label + 3,
+  },
+  version: {
+    fontSize: typography.stat,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
   },
 });
