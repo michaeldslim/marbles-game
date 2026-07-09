@@ -7,12 +7,13 @@ interface Props {
   score: number;
   active: boolean;
   marbleColor?: string;
+  accentSide?: 'left' | 'right';
 }
 
-export default function ScoreSlot({ label, score, active, marbleColor }: Props): JSX.Element {
+export default function ScoreSlot({ label, score, active, marbleColor, accentSide = 'left' }: Props): JSX.Element {
   return (
     <View style={[styles.card, active && styles.cardActive]}>
-      {active ? <View style={styles.accentBar} /> : null}
+      {active ? <View style={[styles.accentBar, accentSide === 'right' && styles.accentBarRight]} /> : null}
       <View style={styles.content}>
         <View style={styles.labelRow}>
           {marbleColor ? <View style={[styles.marble, { backgroundColor: marbleColor }]} /> : null}
@@ -42,6 +43,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 4,
     backgroundColor: colors.accent,
+  },
+  accentBarRight: {
+    left: undefined,
+    right: 0,
   },
   content: {
     flex: 1,

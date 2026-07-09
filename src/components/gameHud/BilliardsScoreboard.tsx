@@ -91,6 +91,7 @@ export default function BilliardsScoreboard({
           score={score2}
           active={turn === 2 && gameActive}
           marbleColor={vsAI ? colors.marbleAi : colors.marbleYellow}
+          accentSide="right"
         />
       }
     />

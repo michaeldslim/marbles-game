@@ -85,6 +85,7 @@ export default function FourBallScoreboard({
           score={score2}
           active={turn === 'white' && gameActive}
           marbleColor={vsAI ? colors.marbleAi : colors.marbleWhite}
+          accentSide="right"
         />
       }
     />
