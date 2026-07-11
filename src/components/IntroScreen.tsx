@@ -4,6 +4,8 @@ import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
 import { colors, radii, spacing, touch, typography } from '../theme';
 import { hapticLight, hapticMedium } from '../utils/haptics';
+import LanguageToggle from './ui/LanguageToggle';
+import type { Lang } from '../i18n';
 import appConfig from '../../app.json';
 
 const appVersion = appConfig.expo.version;
@@ -16,8 +18,10 @@ interface Props {
 }
 
 export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Element {
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const lang = settings.language ?? 'en';
+
+  const setLanguage = (next: Lang) => updateSetting('language', next);
 
   const selectMode = (mode: GameMode) => {
     hapticMedium();
@@ -27,14 +31,19 @@ export default function IntroScreen({ onSelect, onSettings }: Props): JSX.Elemen
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerStrip}>
-        <Text style={styles.title}>{t(lang, 'chooseGameTitle')}</Text>
-        <TouchableOpacity
-          style={styles.settingsBtn}
-          onPress={() => { hapticLight(); onSettings(); }}
-          accessibilityLabel={t(lang, 'settings')}
-        >
-          <Text style={styles.settingsIcon}>⚙️</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <LanguageToggle language={lang} onChange={setLanguage} compact />
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => { hapticLight(); onSettings(); }}
+            accessibilityLabel={t(lang, 'settings')}
+          >
+            <Text style={styles.settingsIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.title} numberOfLines={1}>
+          {t(lang, 'chooseGameTitle')}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -76,16 +85,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.hudBg,
   },
   headerStrip: {
-    flexDirection: 'row',
+    width: '100%',
     alignItems: 'center',
     marginBottom: spacing.lg + 4,
-    width: '100%',
+    gap: spacing.sm + 2,
   },
   title: {
-    flex: 1,
     fontSize: 22,
     fontWeight: '700',
     color: colors.textOnDark,
+    textAlign: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   settingsBtn: {
     width: touch.minSize,

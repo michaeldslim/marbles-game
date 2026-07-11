@@ -94,22 +94,6 @@ export default function SettingsScreen({ onBack }: Props): JSX.Element {
         </TouchableOpacity>
       </View>
 
-      {/* Language toggle */}
-      <View style={styles.langRow}>
-        <TouchableOpacity
-          style={[styles.langBtn, settings.language === 'en' ? styles.langActive : null]}
-          onPress={() => { hapticSelection(); updateSetting('language', 'en'); }}
-        >
-          <Text style={[styles.langBtnText, settings.language === 'en' ? styles.langBtnTextActive : null]}>EN</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.langBtn, settings.language === 'ko' ? styles.langActive : null]}
-          onPress={() => { hapticSelection(); updateSetting('language', 'ko'); }}
-        >
-          <Text style={[styles.langBtnText, settings.language === 'ko' ? styles.langBtnTextActive : null]}>KO</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scroll}>
 
         {/* ── Ball Size ───────────────────────────────── */}
@@ -438,14 +422,6 @@ const styles = StyleSheet.create({
   },
   resetText: { color: colors.textOnDark, fontWeight: '700', fontSize: typography.labelSm + 1 },
 
-  langRow: {
-    padding: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'center',
-    backgroundColor: colors.hudBg,
-  },
-
   scroll: { padding: spacing.lg, paddingBottom: 40 },
 
   section: {
@@ -488,13 +464,6 @@ const styles = StyleSheet.create({
   defaultsTitle: { fontSize: typography.labelSm + 1, fontWeight: '700', color: '#555', marginBottom: spacing.sm },
   defaultItem: { fontSize: typography.labelSm, color: colors.textMutedLight, marginBottom: 2 },
   defaultVal: { fontWeight: '700', color: '#333' },
-  langBtn: {
-    width: 68, height: 36, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.navGhost,
-  },
-  langActive: { backgroundColor: colors.accent },
-  langBtnText: { fontWeight: '700', color: colors.textOnDark, opacity: 0.85 },
-  langBtnTextActive: { color: colors.textOnDark, opacity: 1 },
   aiLevelDesc: { fontSize: typography.labelSm + 1, color: colors.textMutedLight, marginBottom: spacing.sm + 2, lineHeight: 17 },
   aiLevelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   aiLevelBtn: {
