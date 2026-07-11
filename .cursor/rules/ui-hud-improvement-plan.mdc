@@ -15,8 +15,8 @@ alwaysApply: false
 - **Scoreboard:** `BilliardsScoreboard` / `FourBallScoreboard` — dark felt cards, marble dots, accent bar for active player.
 - **Controls:** `ShotControls` — compact side-by-side `SegmentedControl` (spin | english), `PowerMeter` when charging, `AiThinkingIndicator` for AI turn.
 - **Win state:** `WinOverlay` on dimmed playboard (`arenaShell`); HUD stays visible; inline `winBanner` removed (Phase 4).
-- **Intro / Settings:** Dark billiards theme on intro; settings rows/chips use `theme` tokens (Phase 5).
-- **Haptics:** `expo-haptics` on nav, segments, win CTAs, intro/settings toggles (Phase 5).
+- **Intro / Settings:** Dark billiards theme on intro; centered two-row header — `[KO|EN]` + ⚙️ on row 1, title below (Phase 6); language toggle intro-only; settings rows/chips use `theme` tokens (Phase 5).
+- **Haptics:** `expo-haptics` on nav, segments, win CTAs, intro language/settings toggles (Phase 5–6).
 - **i18n:** `t(lang, …)` for nav, scoreboard, controls; spin/english labels EN/KO.
 - **AI:** Shared `src/game/ai/` module; `aiLevel` in Settings. Wall-first 3-cushion routing — see Phase 1.5.
 
@@ -28,9 +28,16 @@ alwaysApply: false
 | B | Scoreboard — P1 \| stats + turn \| P2/AI |
 | C | Spin + English segmented controls / power meter / AI thinking |
 
+### Intro header today (Phase 6)
+
+| Row | Content |
+|-----|---------|
+| 1 | `[KO\|EN]` language chips + ⚙️ settings — center-aligned |
+| 2 | `chooseGameTitle` — center-aligned, `numberOfLines={1}` |
+
 ### Still dated (Phase 6+)
 
-- (none — HUD plan complete through Phase 5)
+- (none — HUD plan complete through Phase 6)
 
 ---
 
@@ -1041,6 +1048,53 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 
 ---
 
+### Phase 6 — Language toggle on intro
+
+**Status:** Done  
+**Scope:** Move language selection from Settings to Intro header; KO/EN chip toggle beside settings gear; centered two-row header layout. **Does not** change `SettingsContext` persistence or `t(lang, …)` usage elsewhere.
+
+**Goal:** Language is a first-run / menu-level choice — visible on the intro screen next to settings, not buried in the settings scroll. Title stays one line on narrow screens by giving it full width on its own row.
+
+#### What shipped
+
+| Area | Done |
+|------|------|
+| `LanguageToggle` | `src/components/ui/LanguageToggle.tsx` — KO then EN chips, accent active state, haptics |
+| Intro header | Row 1: centered `[KO\|EN]` + ⚙️; row 2: centered title |
+| Settings | Language row removed — intro-only control |
+
+#### Layout (intro header)
+
+```
+┌──────────────────────────────────────────────────────┐
+│              [KO|EN]  [⚙️]                           │  row 1: actions, center
+│           게임을 선택하세요 / Choose Your Game          │  row 2: title, center
+└──────────────────────────────────────────────────────┘
+```
+
+- `headerStrip`: `alignItems: 'center'`, vertical `gap`
+- `headerActions`: `justifyContent: 'center'` — language toggle then settings
+- `title`: `textAlign: 'center'`, `numberOfLines={1}` — full width, no wrap vs controls
+- `LanguageToggle` chip order: **KO** then **EN**; `compact` variant (32px chip height) aligns with 44×44 settings button
+- Selection persists via existing `updateSetting('language', …)` + AsyncStorage
+
+#### Acceptance criteria
+
+- [x] KO/EN chip toggle on intro (KO first), adjacent to settings icon
+- [x] Header actions + title center-aligned on separate rows
+- [x] Title one line on narrow screens (no competition with controls for horizontal space)
+- [x] Language toggle removed from Settings screen
+- [x] Language persists across app restarts (unchanged `SettingsContext`)
+- [x] Game HUD / settings labels still follow `settings.language`
+
+#### Phase 6 file checklist
+
+- [x] `src/components/ui/LanguageToggle.tsx`
+- [x] `IntroScreen.tsx` — header `headerActions` + toggle wired
+- [x] `SettingsScreen.tsx` — language row + dead styles removed
+
+---
+
 ## Constraints
 
 1. Retest ball sizing if `BOARD_UI_GAP` changes (currently **130** fixed; no runtime `onLayout` on HUD)
@@ -1092,3 +1146,9 @@ Defer full Intro redesign if scope creeps — **win overlay is required**; Intro
 - [x] `expo-haptics` on press (`haptics.ts` + wired in shared controls)
 - [x] Light transitions — `WinOverlay` fade + spring
 - [x] Intro dark billiards theme; Settings `theme` token pass
+
+### Phase 6
+- [x] `LanguageToggle` KO/EN chips on intro header (KO first, beside settings)
+- [x] Centered two-row intro header (actions row + title row)
+- [x] Language toggle removed from Settings
+- [x] Language persists via `SettingsContext`
