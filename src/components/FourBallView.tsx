@@ -21,7 +21,8 @@ import { PhysicsEngine, Marble } from '../game/physics';
 import { 
   DEFAULT_PLAYER_POWER, 
   SETTLE_SPEED_THRESHOLD, 
-  FOURBALL_SETTLE_FRAMES, 
+  FOURBALL_SETTLE_FRAMES,
+  BM_SLIDE_SOUND,
 } from '../game/constants';
 import { useSettings } from '../context/SettingsContext';
 import { t } from '../i18n';
@@ -203,12 +204,12 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
     return () => { sound?.unloadAsync(); };
   }, []);
 
-  // Load background/mood sound (bm.mp3) used while Player 1 is taking a turn
+  // Load background/mood sound (bm-slide.mp3) used while Player 1 is taking a turn
   useEffect(() => {
     let bm: Audio.Sound;
     const vol = settings.bmVolume ?? 0.2;
     Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
-      .then(() => Audio.Sound.createAsync(require('../../assets/sounds/bm.mp3'), { isLooping: true }))
+      .then(() => Audio.Sound.createAsync(BM_SLIDE_SOUND, { isLooping: true }))
       .then(({ sound: s }) => {
         bm = s;
         bmSoundRef.current = s;
@@ -497,7 +498,7 @@ export default function FourBallView({ onBack, vsAI = false }: Props): JSX.Eleme
           chargePowerRef.current = 0;
           setChargePower(0);
           chargeDirectionRef.current = null;
-          // Play bm.mp3 while Player 1 (yellow) is taking a human turn
+          // Play bm-slide.mp3 while Player 1 (yellow) is taking a human turn
           if (turnRef.current === 'yellow') {
             const bm = bmSoundRef.current;
             if (bm && settingsRef.current.bmEnabled) {

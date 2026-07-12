@@ -66,6 +66,7 @@ export const DEFAULT_LANGUAGE = 'ko' as const;
 // UI / Audio defaults
 export const DEFAULT_BM_VOLUME = 0.2;
 export const DEFAULT_BM_ENABLED = false;
+export const BM_SLIDE_SOUND = require('../../assets/sounds/bm-slide.mp3');
 
 // Internal version number for settings structure, used for migration when loading old settings
 export const DEFAULT_SETTINGS_VERSION = 3;
